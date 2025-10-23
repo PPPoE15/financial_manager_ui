@@ -3,37 +3,38 @@ import { reactive } from 'vue';
 import { createTransaction } from '@/api/transactions';
 
 interface TransactionForm {
-  transactionDate: string;
+  transaction_date: string;
   category: string;
-  moneySum: number | null;
-  transactionType: 'income' | 'outcome' | '';
+  money_sum: number | null;
+  transaction_type: 'income' | 'outcome' | '';
   description: string;
 }
 
 const form = reactive<TransactionForm>({
-  transactionDate: new Date().toISOString().slice(0, 16),
+  transaction_date: new Date().toISOString().slice(0, 16),
   category: '',
-  moneySum: null,
-  transactionType: '',
+  money_sum: null,
+  transaction_type: '',
   description: '',
 });
 
 const handleSubmit = async () => {
   try {
-    if (!form.transactionType) {
+    if (!form.transaction_type) {
       alert('Please select a transaction type');
       return;
     }
+    alert(form.transaction_date)
     await createTransaction({
       ...form,
-      transactionType: form.transactionType as 'income' | 'outcome',
-      moneySum: form.moneySum ?? 0,
+      transaction_type: form.transaction_type as 'income' | 'outcome',
+      money_sum: form.money_sum ?? 0,
     });
     alert('Transaction added successfully!');
     // Сброс формы
     form.category = '';
-    form.moneySum = null;
-    form.transactionType = '';
+    form.money_sum = null;
+    form.transaction_type = '';
     form.description = '';
   } catch (error) {
     console.error('Error adding transaction:', error);
@@ -47,11 +48,11 @@ const handleSubmit = async () => {
     <h1 class="text-2xl font-bold mb-6 text-center">Add Transaction</h1>
     <form @submit.prevent="handleSubmit">
       <div class="mb-4">
-        <label for="transactionDate" class="block text-sm font-medium text-gray-700">Transaction Date</label>
+        <label for="transaction_date" class="block text-sm font-medium text-gray-700">Transaction Date</label>
         <input
-          v-model="form.transactionDate"
+          v-model="form.transaction_date"
           type="datetime-local"
-          id="transactionDate"
+          id="transaction_date"
           class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
           required
         />
@@ -68,11 +69,11 @@ const handleSubmit = async () => {
         />
       </div>
       <div class="mb-4">
-        <label for="moneySum" class="block text-sm font-medium text-gray-700">Amount</label>
+        <label for="money_sum" class="block text-sm font-medium text-gray-700">Amount</label>
         <input
-          v-model.number="form.moneySum"
+          v-model.number="form.money_sum"
           type="number"
-          id="moneySum"
+          id="money_sum"
           placeholder="e.g., 120"
           min="0"
           step="0.01"
@@ -81,10 +82,10 @@ const handleSubmit = async () => {
         />
       </div>
       <div class="mb-4">
-        <label for="transactionType" class="block text-sm font-medium text-gray-700">Transaction Type</label>
+        <label for="transaction_type" class="block text-sm font-medium text-gray-700">Transaction Type</label>
         <select
-          v-model="form.transactionType"
-          id="transactionType"
+          v-model="form.transaction_type"
+          id="transaction_type"
           class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
           required
         >

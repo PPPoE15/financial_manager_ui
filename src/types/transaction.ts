@@ -1,7 +1,7 @@
 export interface CreateTransaction {
-  transactionDate: string;
+  transaction_date: string;
   category: string;
-  moneySum: number;
-  transactionType: 'income' | 'outcome';
+  money_sum: number;
+  transaction_type: 'income' | 'outcome';
   description: string;
 }
