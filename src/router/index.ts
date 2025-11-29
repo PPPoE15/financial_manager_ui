@@ -1,7 +1,7 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import AddTransactionView from '../views/AddTransactionView.vue'
+import AddTransactionView from '@/views/AddTransactionView.vue'
 import HomePage from '@/components/HomePage.vue'
-import Registration from '@/components/Registration.vue'
+import RegistrationView from '@/views/RegistrationView.vue'
 
 const routes = [
   {
@@ -12,7 +12,7 @@ const routes = [
   {
     path: '/registration',
     name: 'registration',
-    component: Registration
+    component: RegistrationView
   },
   {
     path: '/add-transaction',

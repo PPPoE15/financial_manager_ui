@@ -24,7 +24,6 @@ const handleSubmit = async () => {
       alert('Please select a transaction type');
       return;
     }
-    alert(form.transaction_date)
     await createTransaction({
       ...form,
       transaction_type: form.transaction_type as 'income' | 'outcome',
