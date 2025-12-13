@@ -1,4 +1,4 @@
-<script>
+<script lang="ts">
 import UserRegistration from './UserRegistration.vue';
 import UserLogin from './UserLogin.vue';
 

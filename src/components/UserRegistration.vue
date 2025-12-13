@@ -1,7 +1,7 @@
 <script lang="ts">
 import { createUser } from '@/api/registration';
 import { loginUser } from '@/api/login';
-import { LoginData } from '@/types/loginData'
+import type { LoginData } from '@/types/loginData'
 
 export default {
   name: 'UserRegistration',
