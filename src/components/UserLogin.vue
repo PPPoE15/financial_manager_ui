@@ -1,4 +1,4 @@
-<script>
+<script lang="ts">
 import { loginUser } from '@/api/login';
 
 export default {
@@ -14,9 +14,10 @@ export default {
   methods: {
     async handleSubmit() {
       try {
-        const data = await loginUser({
+        await loginUser({
           ...this.form,
         });
+        window.location.href = '/add-transaction';
       } catch (error) {
         console.error('Login error:', error);
         alert('Failed to login');

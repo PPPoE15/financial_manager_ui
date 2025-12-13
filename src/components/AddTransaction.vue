@@ -29,7 +29,6 @@ const handleSubmit = async () => {
       transaction_type: form.transaction_type as 'income' | 'outcome',
       money_sum: form.money_sum ?? 0,
     });
-    alert('Transaction added successfully!');
     // Сброс формы
     form.category = '';
     form.money_sum = null;

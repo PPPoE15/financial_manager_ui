@@ -29,7 +29,6 @@ export default {
         await loginUser({
           ...loginData
         });
-        console.log(localStorage.getItem("authToken"))
       } catch (error) {
         console.error('Registration error:', error);
         alert('Failed to register');
