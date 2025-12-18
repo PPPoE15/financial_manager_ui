@@ -1,7 +1,7 @@
 import axios from 'axios';
 import type { LoginData } from '@/types/loginData';
 
-const AUTH_API_URL = import.meta.env.VITE_AUTH_API_URL || 'http://localhost:8080/auth';
+const AUTH_API_URL = import.meta.env.VITE_AUTH_API_URL || '/auth';
 
 
 export const loginUser = async (data: LoginData) => {
