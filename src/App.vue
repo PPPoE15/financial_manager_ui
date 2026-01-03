@@ -3,12 +3,14 @@ import { RouterView } from 'vue-router'
 </script>
 
 <template>
-  <div class="main-background">
-    <div class="content">
-      <h1 class="header">Финансовый менеджер</h1>
-      <RouterView />
-    </div>
-  </div>
+    <Suspense>
+      <div class="main-background">
+        <div class="content">
+          <h1 class="header">Финансовый менеджер</h1>
+          <RouterView />
+        </div>
+      </div>
+    </Suspense>
 </template>
 
 <style scoped>

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { reactive } from 'vue';
-import { createTransaction } from '@/api/transactions';
+import { createTransaction } from '@/api/create_transactions';
 
 interface TransactionForm {
   transaction_date: string;

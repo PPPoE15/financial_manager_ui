@@ -1,5 +1,6 @@
 <script lang="ts">
 import { loginUser } from '@/api/login';
+import router from '@/router';
 
 export default {
   name: 'UserLogin',
@@ -17,7 +18,7 @@ export default {
         await loginUser({
           ...this.form,
         });
-        window.location.href = '/add-transaction';
+        router.push('/transaction-list');
       } catch (error) {
         console.error('Login error:', error);
         alert('Failed to login');
@@ -30,29 +31,13 @@ export default {
 <template>
   <form @submit.prevent="handleSubmit">
     <div class="mb-4">
-      <input
-        v-model="form.login"
-        type="text"
-        id="login"
-        placeholder="   Имя пользователя или e-mail"
-        class="field"
-        required
-      />
+      <input v-model="form.login" type="text" id="login" placeholder="   Имя пользователя или e-mail" class="field"
+        required />
     </div>
     <div class="mb-4">
-      <input
-        v-model="form.password"
-        type="password"
-        id="password"
-        placeholder="   Пароль"
-        class="field"
-        required
-      />
+      <input v-model="form.password" type="password" id="password" placeholder="   Пароль" class="field" required />
     </div>
-    <button
-      type="submit"
-      class="button"
-    >
+    <button type="submit" class="button">
       Войти
     </button>
   </form>
@@ -66,6 +51,7 @@ export default {
   border-radius: 15px;
   min-height: 45px;
 }
+
 .button {
   margin: 10px auto;
   background-color: #d4d1fe;
@@ -77,5 +63,4 @@ export default {
   justify-content: center;
   align-items: center;
 }
-
 </style>
