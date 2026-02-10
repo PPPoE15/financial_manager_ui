@@ -2,6 +2,7 @@
 import { createTransaction } from "@/api/create_transactions";
 import Table from "@/components/Table.vue"
 import { reactive, ref } from 'vue';
+import DropDownList from "@/components/DropDownList.vue"
 
 interface TransactionForm {
   transaction_date: string;
@@ -72,11 +73,19 @@ async function addNewRow() {
         <tbody>
           <tr>
             <td v-for="column in columns" :key="column.prop">
-              <input
-                v-model="newRow[column.prop]"
-                :type="column.type || 'text'"
-                class="w-full px-2 py-1 border rounded"
-              />
+                <div v-if="column.prop === 'category'">
+                <DropDownList
+                    v-model="newRow.category"
+                    category-type="outcome"
+                />
+                </div>
+                <div v-else>
+                    <input
+                      v-model="newRow[column.prop]"
+                      :type="column.type || 'text'"
+                      class="w-full px-2 py-1 border rounded"
+                    />
+                </div>
             </td>
             <td>
               <button @click="addNewRow" class="px-3 py-1 bg-blue-500 text-white rounded">

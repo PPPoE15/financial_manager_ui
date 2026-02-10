@@ -1,113 +1,198 @@
-<script setup lang="ts">
-import { reactive } from 'vue';
-import { createTransaction } from '@/api/create_transactions';
+<template>
+  <form @submit.prevent="handleSubmit" class="transaction-form">
+    <div class="form-group">
+      <label for="transaction_date">Дата транзакции</label>
+      <input
+        id="transaction_date"
+        v-model="form.transaction_date"
+        type="date"
+        required
+      />
+    </div>
 
-interface TransactionForm {
-  transaction_date: string;
-  category: string;
-  money_sum: number | null;
-  transaction_type: 'income' | 'outcome' | '';
-  description: string;
-}
+    <div class="form-group">
+      <label for="category">Категория</label>
+      <select
+        id="category"
+        v-model="form.category"
+        @change="onCategoryChange"
+        required
+      >
+        <option value="">Выберите категорию</option>
+        <option
+          v-for="cat in categories"
+          :key="cat.uuid"
+          :value="cat.uuid"
+        >
+          {{ cat.name }}
+        </option>
+      </select>
+    </div>
 
-const form = reactive<TransactionForm>({
-  transaction_date: new Date().toISOString().slice(0, 16),
-  category: '',
-  money_sum: null,
-  transaction_type: '',
-  description: '',
-});
+    <div class="form-group">
+      <label for="money_sum">Сумма</label>
+      <input
+        id="money_sum"
+        v-model.number="form.money_sum"
+        type="number"
+        step="0.01"
+        required
+      />
+    </div>
 
-const handleSubmit = async () => {
-  try {
-    if (!form.transaction_type) {
-      alert('Please select a transaction type');
-      return;
+    <div class="form-group">
+      <label for="transaction_type">Тип транзакции</label>
+      <select id="transaction_type" v-model="form.transaction_type" required>
+        <option value="income">Доход</option>
+        <option value="expense">Расход</option>
+      </select>
+    </div>
+
+    <div class="form-group">
+      <label for="description">Описание</label>
+      <textarea
+        id="description"
+        v-model="form.description"
+        rows="3"
+      ></textarea>
+    </div>
+
+    <button type="submit" :disabled="isSubmitting">
+      {{ isSubmitting ? 'Отправляется...' : 'Сохранить' }}
+    </button>
+  </form>
+</template>
+
+<script lang="ts">
+import { getCategories } from '@/api/get_categories';
+
+export default {
+  data() {
+    return {
+      categories: [], // Список категорий из API
+      form: {
+        transaction_date: '',
+        category: '',       // UUID выбранной категории
+        money_sum: null,
+        transaction_type: '',
+        description: ''
+      },
+      isSubmitting: false
+    };
+  },
+
+  mounted() {
+    this.fetchCategories();
+  },
+
+  methods: {
+    // Загрузка категорий из API
+    async fetchCategories() {
+      try {
+        const response = await getCategories("outcome");
+        if (!response) {
+          throw new Error('Ошибка загрузки категорий');
+        }
+        this.categories = response;
+      } catch (error) {
+        console.error('Не удалось загрузить категории:', error);
+        alert('Не удалось загрузить категории. Проверьте подключение к сети.');
+      }
+    },
+
+    // Обработчик изменения категории (можно расширить при необходимости)
+    onCategoryChange() {
+      // Здесь можно добавить логику при смене категории
+    },
+
+    // Отправка формы
+    async handleSubmit() {
+      this.isSubmitting = true;
+
+      try {
+        const payload = {
+          transaction_date: this.form.transaction_date,
+          category: this.form.category,      // UUID категории
+          money_sum: this.form.money_sum,
+          transaction_type: this.form.transaction_type,
+          description: this.form.description
+        };
+
+        const response = await fetch('https://your-api-url/transactions', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(payload)
+        });
+
+        if (!response.ok) {
+          throw new Error('Ошибка отправки данных');
+        }
+
+        alert('Транзакция сохранена!');
+        this.$emit('success', payload); // Опциональное событие при успехе
+        this.resetForm();
+      } catch (error) {
+        console.error('Ошибка при отправке формы:', error);
+        alert('Не удалось сохранить транзакцию. Попробуйте ещё раз.');
+      } finally {
+        this.isSubmitting = false;
+      }
+    },
+
+    // Очистка формы после отправки
+    resetForm() {
+      this.form = {
+        transaction_date: '',
+        category: '',
+        money_sum: null,
+        transaction_type: '',
+        description: ''
+      };
     }
-    await createTransaction({
-      ...form,
-      transaction_type: form.transaction_type as 'income' | 'outcome',
-      money_sum: form.money_sum ?? 0,
-    });
-    // Сброс формы
-    form.category = '';
-    form.money_sum = null;
-    form.transaction_type = '';
-    form.description = '';
-  } catch (error) {
-    console.error('Error adding transaction:', error);
-    alert('Failed to add transaction');
   }
 };
 </script>
 
-<template>
-  <div class="bg-white p-6 rounded-lg shadow-lg w-full max-w-md mx-auto">
-    <h1 class="text-2xl font-bold mb-6 text-center">Add Transaction</h1>
-    <form @submit.prevent="handleSubmit">
-      <div class="mb-4">
-        <label for="transaction_date" class="block text-sm font-medium text-gray-700">Transaction Date</label>
-        <input
-          v-model="form.transaction_date"
-          type="datetime-local"
-          id="transaction_date"
-          class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
-          required
-        />
-      </div>
-      <div class="mb-4">
-        <label for="category" class="block text-sm font-medium text-gray-700">Category</label>
-        <input
-          v-model="form.category"
-          type="text"
-          id="category"
-          placeholder="e.g., Food, Salary"
-          class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
-          required
-        />
-      </div>
-      <div class="mb-4">
-        <label for="money_sum" class="block text-sm font-medium text-gray-700">Amount</label>
-        <input
-          v-model.number="form.money_sum"
-          type="number"
-          id="money_sum"
-          placeholder="e.g., 120"
-          min="0"
-          step="0.01"
-          class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
-          required
-        />
-      </div>
-      <div class="mb-4">
-        <label for="transaction_type" class="block text-sm font-medium text-gray-700">Transaction Type</label>
-        <select
-          v-model="form.transaction_type"
-          id="transaction_type"
-          class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
-          required
-        >
-          <option value="" disabled>Select type</option>
-          <option value="income">Income</option>
-          <option value="outcome">Outcome</option>
-        </select>
-      </div>
-      <div class="mb-4">
-        <label for="description" class="block text-sm font-medium text-gray-700">Description</label>
-        <textarea
-          v-model="form.description"
-          id="description"
-          placeholder="e.g., Cat food"
-          class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
-          rows="4"
-        ></textarea>
-      </div>
-      <button
-        type="submit"
-        class="w-full bg-indigo-600 text-white py-2 px-4 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-opacity-50"
-      >
-        Add Transaction
-      </button>
-    </form>
-  </div>
-</template>
+<style scoped>
+.transaction-form {
+  max-width: 500px;
+  margin: 0 auto;
+  padding: 20px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+}
+
+.form-group {
+  margin-bottom: 15px;
+}
+
+label {
+  display: block;
+  margin-bottom: 5px;
+  font-weight: bold;
+}
+
+input, select, textarea {
+  width: 100%;
+  padding: 8px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  box-sizing: border-box;
+}
+
+button {
+  background-color: #007bff;
+  color: white;
+  padding: 10px 20px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+button:disabled {
+  background-color: #6c757d;
+  cursor: not-allowed;
+}
+</style>
