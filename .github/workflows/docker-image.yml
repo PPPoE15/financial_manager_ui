@@ -1,0 +1,28 @@
+name: Docker Image CD
+
+on:
+  push:
+    branches: ["dev", "master"]
+
+jobs:
+
+  build-and-push:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Build the Docker image
+      run: docker build . --file Dockerfile --tag ${{ secrets.DOCKERHUB_USERNAME }}/fm-ui:${{ github.sha }}
+
+    - name: Log in to Docker Hub
+      uses: docker/login-action@v2
+      with:
+        username: ${{ secrets.DOCKERHUB_USERNAME }}
+        password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+    - name: Push Docker image
+      run: |
+        docker tag ${{ secrets.DOCKERHUB_USERNAME }}/fm-ui:${{ github.sha }} ${{ secrets.DOCKERHUB_USERNAME }}/fm-ui:${{ github.ref_name }}
+        docker push ${{ secrets.DOCKERHUB_USERNAME }}/fm-ui:${{ github.ref_name }}
