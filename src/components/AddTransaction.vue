@@ -21,8 +21,8 @@
         <option value="">Выберите категорию</option>
         <option
           v-for="cat in categories"
-          :key="cat.uuid"
-          :value="cat.uuid"
+          :key="cat.uid"
+          :value="cat.uid"
         >
           {{ cat.name }}
         </option>
@@ -65,11 +65,12 @@
 
 <script lang="ts">
 import { getCategories } from '@/api/get_categories';
+import type { categoryData } from '@/types/categories';
 
 export default {
   data() {
     return {
-      categories: [], // Список категорий из API
+      categories: [] as categoryData[], // Список категорий из API
       form: {
         transaction_date: '',
         category: '',       // UUID выбранной категории

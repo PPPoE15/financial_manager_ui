@@ -14,7 +14,7 @@ export const getCategories = async (category_type: TransactionType): Promise<cat
   const params = {
     category_type: category_type,
   }
-  const response: AxiosResponse<categoryData[]> = await axios.get(url, {
+  const response: AxiosResponse<{ total: number; content: categoryData[] }> = await axios.get(url, {
     headers: {
       Authorization: 'Bearer ' + localStorage.getItem('authToken'),
     },

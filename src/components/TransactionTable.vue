@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { createTransaction } from "@/api/create_transactions";
-import Table from "@/components/Table.vue"
+import Table from "@/components/DataTable.vue"
 import { reactive, ref } from 'vue';
 import DropDownList from "@/components/DropDownList.vue"
+import type { Column } from '@/types/table'
 
 interface TransactionForm {
   transaction_date: string;
@@ -10,24 +11,16 @@ interface TransactionForm {
   money_sum: number;
   transaction_type: string;
   description: string;
+  [key: string]: string | number;
 }
 
-const props = defineProps({
-  columns: {
-    type: Array,
-    required: true
-  },
-  data: {
-    type: Array,
-    required: true
-  },
-  transaction_type: {
-    type: String,
-    required: true
-  },
-});
+const props = defineProps<{
+  columns: Column[]
+  data: Record<string, unknown>[]
+  transaction_type: string
+}>();
 
-const data = ref<any[]>(props.data);
+const data = ref<Record<string, unknown>[]>(props.data);
 const newRow = reactive<TransactionForm>({
   transaction_date: '',
   category: '',
@@ -48,7 +41,7 @@ async function addNewRow() {
     data.value.push(savedItem);
 
     // Сброс формы
-    Object.assign(newRow.value, {
+    Object.assign(newRow, {
       transaction_date: '',
       category: '',
       money_sum: null,

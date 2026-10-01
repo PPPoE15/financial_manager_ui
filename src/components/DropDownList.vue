@@ -10,8 +10,8 @@
     <select v-model="selectedValue" size="5">
       <option
         v-for="item in filteredOptions"
-        :key="item.value"
-        :value="item.value"
+        :key="item.uid"
+        :value="item.uid"
       >
         {{ item.name }}
       </option>
