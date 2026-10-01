@@ -17,7 +17,7 @@ const props = defineProps({
 });
 
 const response = await getTransactions(props.transaction_type);
-const tableData = ref<any[]>([]);
+const tableData = ref<Record<string, unknown>[]>([]);
 
 tableData.value = response.content
 </script>

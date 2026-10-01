@@ -18,16 +18,12 @@
 </template>
 
 <script setup lang="ts">
-const props = defineProps({
-  columns: {
-    type: Array,
-    required: true
-  },
-  data: {
-    type: Array,
-    required: true
-  }
-});
+import type { Column } from '@/types/table'
+
+defineProps<{
+  columns: Column[]
+  data: Record<string, unknown>[]
+}>()
 </script>
 
 <style scoped>
