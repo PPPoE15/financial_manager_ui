@@ -1,39 +1,18 @@
-# test-frontend
+# financial_manager_ui
 
-This template should help get you started developing with Vue 3 in Vite.
+Фронтенд «Финансового менеджера»: Vue 3 + TypeScript + Vite, Pinia, Vue Router, Tailwind, Vitest.
 
-## Recommended IDE Setup
-
-[VSCode](https://code.visualstudio.com/) + [Volar](https://marketplace.visualstudio.com/items?itemName=Vue.volar) (and disable Vetur).
-
-## Type Support for `.vue` Imports in TS
-
-TypeScript cannot handle type information for `.vue` imports by default, so we replace the `tsc` CLI with `vue-tsc` for type checking. In editors, we need [Volar](https://marketplace.visualstudio.com/items?itemName=Vue.volar) to make the TypeScript language service aware of `.vue` types.
-
-## Customize configuration
-
-See [Vite Configuration Reference](https://vite.dev/config/).
-
-## Project Setup
+## Команды
 
 ```sh
-npm install
+npm install         # зависимости
+npm run dev         # dev-сервер
+npm run build       # проверка типов и сборка в dist/
+npm run test        # unit-тесты (Vitest)
+npm run lint        # ESLint
+npm run format      # Prettier
+make build_dev      # Docker-образ pppoe15/fm-ui:dev
 ```
 
-### Compile and Hot-Reload for Development
-
-```sh
-npm run dev
-```
-
-### Type-Check, Compile and Minify for Production
-
-```sh
-npm run build
-```
-
-### Lint with [ESLint](https://eslint.org/)
-
-```sh
-npm run lint
-```
+Переменные окружения: `VITE_API_URL` (API транзакций, по умолчанию `/transaction`),
+`VITE_AUTH_API_URL` (API авторизации, по умолчанию `/auth`).
