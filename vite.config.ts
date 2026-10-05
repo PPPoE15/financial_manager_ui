@@ -6,18 +6,16 @@ import vueDevTools from 'vite-plugin-vue-devtools'
 
 // https://vite.dev/config/
 export default defineConfig({
-  plugins: [
-    vue(),
-    vueDevTools(),
-  ],
-  base: './',
+  plugins: [vue(), vueDevTools()],
+  // Абсолютный base: относительные пути к ассетам ломаются при обновлении страницы на вложенном маршруте
+  base: '/',
   build: {
-    outDir: 'dist', // 📁 Папка сборки
-    emptyOutDir: true
+    outDir: 'dist',
+    emptyOutDir: true,
   },
   resolve: {
     alias: {
-      '@': fileURLToPath(new URL('./src', import.meta.url))
+      '@': fileURLToPath(new URL('./src', import.meta.url)),
     },
   },
 })
