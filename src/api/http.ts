@@ -9,6 +9,11 @@ export type ApiName = 'transaction' | 'auth'
 declare module 'axios' {
   interface AxiosRequestConfig {
     api?: ApiName
+    /**
+     * Запрос без сессии (вход, регистрация): токен не подставляется,
+     * а 401 считается ответом на неверные данные, а не истечением сессии.
+     */
+    skipAuth?: boolean
   }
 }
 
@@ -33,7 +38,7 @@ export function createHttpClient({ getToken, onUnauthorized }: HttpClientOptions
 
   http.interceptors.request.use((config) => {
     config.baseURL = BASE_URLS[config.api ?? 'transaction']
-    const token = getToken()
+    const token = config.skipAuth ? null : getToken()
     if (token) {
       config.headers.set('Authorization', `Bearer ${token}`)
     }
@@ -41,7 +46,7 @@ export function createHttpClient({ getToken, onUnauthorized }: HttpClientOptions
   })
 
   http.interceptors.response.use(undefined, (error: unknown) => {
-    // 401 без токена — это ответ на вход с неверными данными, его обрабатывает сам экран
+    // 401 без токена (skipAuth) — это ответ на вход с неверными данными, его обрабатывает сам экран
     if (
       error instanceof AxiosError &&
       error.response?.status === 401 &&

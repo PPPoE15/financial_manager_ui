@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, useId } from 'vue'
+import { computed, useAttrs, useId, type HTMLAttributes } from 'vue'
 
 import ErrorMessage from '@/components/ui/ErrorMessage.vue'
 
@@ -18,18 +18,27 @@ const props = withDefaults(
 
 const model = defineModel<string>({ default: '' })
 
+// class/style родителя относятся к блоку поля целиком, остальные атрибуты — к самому <input>
+const attrs = useAttrs()
+const rootAttrs = computed(
+  () => ({ class: attrs.class, style: attrs.style }) as Pick<HTMLAttributes, 'class' | 'style'>,
+)
+const inputAttrs = computed(() =>
+  Object.fromEntries(Object.entries(attrs).filter(([key]) => key !== 'class' && key !== 'style')),
+)
+
 const generatedId = useId()
 const inputId = computed(() => props.id ?? generatedId)
 const errorId = computed(() => `${inputId.value}-error`)
 </script>
 
 <template>
-  <div class="flex flex-col gap-[11px]">
+  <div class="flex flex-col gap-[11px]" v-bind="rootAttrs">
     <label :for="inputId" class="text-base font-medium text-ink">{{ label }}</label>
     <input
       :id="inputId"
       v-model="model"
-      v-bind="$attrs"
+      v-bind="inputAttrs"
       :type="type"
       :placeholder="placeholder"
       :aria-invalid="error ? 'true' : undefined"

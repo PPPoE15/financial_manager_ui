@@ -55,4 +55,19 @@ describe('BaseInput', () => {
     expect(input.attributes('aria-invalid')).toBe('true')
     expect(input.attributes('aria-describedby')).toBe(error.attributes('id'))
   })
+
+  it('class и style родителя применяет к блоку поля, а не к input', () => {
+    const wrapper = mount(BaseInput, {
+      props: { label: 'Пароль' },
+      attrs: { class: 'mt-4', style: 'width: 50%;', name: 'password' },
+    })
+
+    const root = wrapper.get('div')
+    const input = wrapper.get('input')
+    expect(root.classes()).toContain('mt-4')
+    expect(root.attributes('style')).toContain('width: 50%')
+    expect(input.classes()).not.toContain('mt-4')
+    expect(input.attributes('style')).toBeUndefined()
+    expect(input.attributes('name')).toBe('password')
+  })
 })

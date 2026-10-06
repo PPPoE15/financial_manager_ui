@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { createMemoryHistory, type NavigationGuard } from 'vue-router'
 
-import { HOME_ROUTE, LOGIN_ROUTE, createAppRouter } from '@/router'
+import { HOME_ROUTE, LOGIN_ROUTE, createAppRouter, redirectToLogin } from '@/router'
 
 describe('createAppRouter', () => {
   it('содержит маршруты главной и экрана входа', () => {
@@ -37,5 +37,26 @@ describe('createAppRouter', () => {
     await router.push({ name: HOME_ROUTE })
 
     expect(router.currentRoute.value.name).toBe(LOGIN_ROUTE)
+  })
+
+  it('redirectToLogin переводит на экран входа', async () => {
+    const router = createAppRouter(createMemoryHistory())
+    await router.push({ name: HOME_ROUTE })
+    const push = vi.spyOn(router, 'push')
+
+    redirectToLogin(router)
+    await vi.waitFor(() => expect(router.currentRoute.value.name).toBe(LOGIN_ROUTE))
+
+    expect(push).toHaveBeenCalledWith({ name: LOGIN_ROUTE })
+  })
+
+  it('redirectToLogin не переходит повторно, если пользователь уже на экране входа', async () => {
+    const router = createAppRouter(createMemoryHistory())
+    await router.push({ name: LOGIN_ROUTE })
+    const push = vi.spyOn(router, 'push')
+
+    redirectToLogin(router)
+
+    expect(push).not.toHaveBeenCalled()
   })
 })

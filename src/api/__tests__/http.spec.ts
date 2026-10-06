@@ -78,6 +78,23 @@ describe('createHttpClient', () => {
     expect(onUnauthorized).not.toHaveBeenCalled()
   })
 
+  it('со skipAuth не подставляет сохранённый токен', async () => {
+    const { http, sent } = setup({ token: 'stale' })
+
+    await http.post('/token', {}, { api: 'auth', skipAuth: true })
+
+    expect(authorizationOf(sent[0])).toBeUndefined()
+  })
+
+  it('со skipAuth на 401 (неверный пароль при старом токене) не вызывает onUnauthorized', async () => {
+    const { http, onUnauthorized } = setup({ token: 'stale', status: 401 })
+
+    await expect(http.post('/token', {}, { api: 'auth', skipAuth: true })).rejects.toMatchObject({
+      response: { status: 401 },
+    })
+    expect(onUnauthorized).not.toHaveBeenCalled()
+  })
+
   it('другие ошибки пробрасывает без вызова onUnauthorized', async () => {
     const { http, onUnauthorized } = setup({ token: 'secret', status: 500 })
 

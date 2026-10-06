@@ -31,6 +31,13 @@ export function createAppRouter(
   return router
 }
 
+/** Переводит на экран входа, если пользователь ещё не там. */
+export function redirectToLogin(router: Router): void {
+  if (router.currentRoute.value.name !== LOGIN_ROUTE) {
+    void router.push({ name: LOGIN_ROUTE })
+  }
+}
+
 const router = createAppRouter(createWebHistory(import.meta.env.BASE_URL))
 
 export default router

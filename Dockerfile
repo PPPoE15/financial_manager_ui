@@ -1,4 +1,4 @@
-FROM node:20.19.0-alpine as builder
+FROM node:22.22.2-alpine AS builder
 
 LABEL stage=builder
 

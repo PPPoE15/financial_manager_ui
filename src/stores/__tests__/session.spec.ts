@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { createPinia, setActivePinia } from 'pinia'
 
 import { TOKEN_STORAGE_KEY, useSessionStore } from '@/stores/session'
@@ -56,5 +56,23 @@ describe('useSessionStore', () => {
     expect(session.user).toBeNull()
     expect(session.isAuthenticated).toBe(false)
     expect(localStorage.getItem(TOKEN_STORAGE_KEY)).toBeNull()
+  })
+
+  it('при недоступном localStorage работает с сессией в памяти', () => {
+    const denied = () => {
+      throw new DOMException('Доступ запрещён', 'SecurityError')
+    }
+    vi.spyOn(Storage.prototype, 'getItem').mockImplementation(denied)
+    vi.spyOn(Storage.prototype, 'setItem').mockImplementation(denied)
+    vi.spyOn(Storage.prototype, 'removeItem').mockImplementation(denied)
+
+    const session = useSessionStore()
+    expect(session.token).toBeNull()
+
+    session.setToken('token')
+    expect(session.token).toBe('token')
+
+    session.clear()
+    expect(session.token).toBeNull()
   })
 })
