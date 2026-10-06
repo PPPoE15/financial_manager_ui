@@ -5,56 +5,75 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Commands
 
 ```sh
-npm install       # install dependencies
-npm run dev       # start Vite dev server with HMR
-npm run build     # type-check (vue-tsc --build) then production build to dist/
+npm install        # install dependencies
+npm run dev        # start Vite dev server with HMR
+npm run build      # type-check (vue-tsc --build) then production build to dist/
 npm run type-check # vue-tsc --build only
-npm run preview   # preview the production build locally
-npm run lint      # eslint . --fix
-npm run format    # prettier --write src/
+npm run test       # Vitest (jsdom), single run; `npm run test:watch` for watch mode,
+                   # `npm run test:coverage` for a v8 coverage report
+npm run preview    # preview the production build locally
+npm run lint       # eslint . --fix  (CI runs `npx eslint .` without --fix)
+npm run format     # prettier --write src/
 ```
 
-There is no test runner configured in this project (no test script, no test files).
+CI (`.github/workflows/ci.yml`): `npm ci` → `npx eslint .` → `npm run build` → `npm run test`.
 
 Docker/deploy:
 ```sh
 make build_dev    # docker build -t pppoe15/fm-ui:dev .
-make push_dev      # docker login && docker push pppoe15/fm-ui:dev
+make push_dev     # docker login && docker push pppoe15/fm-ui:dev
 ```
-The Dockerfile does a multi-stage build (`npm run build` → static files served by nginx using `nginx/nginx.conf`).
+The Dockerfile does a multi-stage build (`npm run build` → static files served by nginx using
+`nginx/nginx.conf`). nginx listens on 443 with certs mounted at `/etc/nginx/ssl`, proxies `/auth/`
+and `/transaction/` to the backend containers and falls back to `index.html` for SPA routes.
+Missing files under `/assets/` return 404 (not `index.html`), so a stale lazy chunk fails cleanly.
+Vite `base` must stay `/` (relative base breaks assets on nested-route reloads).
+
+Node: `^22.22.2 || ^24.15.0 || >=26` (jsdom/vitest requirements); the Docker builder uses
+`node:22.22.2-alpine`. In `npm run dev` without `VITE_API_URL`/`VITE_AUTH_API_URL`, Vite proxies
+`/transaction/` → `localhost:8083` and `/auth/` → `localhost:8082` (the `fm_devops` compose ports),
+stripping the prefix like nginx does.
 
 ## Architecture
 
-This is a Vue 3 + TypeScript + Vite SPA (financial manager / "Финансовый менеджер") for tracking income/outcome transactions against user-defined categories, talking to a separate backend over two API roots.
+Vue 3 + TypeScript + Vite SPA («Финансовый менеджер»), Pinia, Vue Router, Tailwind 3, Vitest +
+`@vue/test-utils`. All components use `<script setup lang="ts">`. Path alias `@` → `src/`.
 
-**API layer (`src/api/`)**: thin axios wrapper functions, one file per endpoint (`login.ts`, `registration.ts`, `get_transactions.ts`, `create_transactions.ts`, `get_categories.ts`). Base URLs come from `src/api/constants.ts`:
-- `TRANSACTION_API_URL` — `VITE_API_URL` env var, defaults to `/transaction`
-- `AUTH_API_URL` — `VITE_AUTH_API_URL` env var, defaults to `/auth`
-
-Auth is a bearer JWT stored in `localStorage` under `authToken`, set by `loginUser()` in `login.ts` and manually attached as an `Authorization: Bearer ...` header in every authenticated request (no shared axios instance/interceptor exists yet — each API function repeats this header).
-
-**Routing (`src/router/index.ts`)**: flat route table, no nested routes or route guards yet:
-- `/` → `HomePage` (login/registration tabs)
-- `/registration` → `RegistrationView`
-- `/transaction-list` → `TransactionsTabsView` (income/outcome tabs)
-- `/add-transaction` → `AddTransactionView`
-
-**View/component split**: `src/views/` holds routed page components; `src/components/` holds reusable pieces and some component-level "tabs" containers (`HomePage.vue` and `TransactionsTabsView.vue` both implement the same hand-rolled tab-switcher pattern via a local `activeTab` data property — follow that existing pattern if adding another tabbed view rather than introducing a new abstraction).
-
-**Mixed component style**: the codebase mixes Vue Options API (`<script lang="ts">` + `export default {...}`) and Composition API (`<script setup lang="ts">`) across sibling files with no consistent rule — check the file you're editing and match its existing style rather than converting it.
-
-**Data flow for transactions**: `TransactionsTabsView` → `TransactionsView` (fetches via `getTransactions`, `<script setup>` top-level `await`) → `TransactionTable` (generic column-driven table, also handles the "add new row" form using `DropDownList` for category selection and `createTransaction`). Table column definitions are plain `{ label, prop, type }` objects passed as props, not derived from the data type.
-
-**Known inconsistencies to be aware of** (don't silently "fix" these as drive-by changes unless asked):
-- `src/components/AddTransaction copy.vue` is a stale duplicate/leftover of `AddTransaction.vue` with divergent, non-functional code (calls `fetch()` against a placeholder URL) — likely dead code, not wired into the router.
-- `src/components/AddTransaction.vue` also uses a placeholder `fetch('https://your-api-url/transactions', ...)` instead of the real `src/api/create_transactions.ts` helper used elsewhere.
-- Transaction type values are inconsistent between `income`/`outcome` (used in `src/types/transaction.ts`, API calls, tabs) and `income`/`expense` (used in `AddTransaction.vue`'s select options).
-- Path alias `@` → `src/` is configured in both `vite.config.ts` and `tsconfig`; use it for imports instead of relative paths (existing code does this consistently).
+- **HTTP (`src/api/`)**: `http.ts` — `createHttpClient({ getToken, onUnauthorized })`, one axios
+  instance for both backends. Base URL is chosen per request by the custom `api` config field:
+  `'transaction'` (default, `VITE_API_URL`, fallback `/transaction`) or `'auth'`
+  (`VITE_AUTH_API_URL`, fallback `/auth`), e.g. `http.post('/token', body, { api: 'auth' })`.
+  Adds `Authorization: Bearer <token>`; a 401 on a request that carried a token calls
+  `onUnauthorized`. Requests made without a session (login, registration) pass `skipAuth: true`:
+  no token is attached even if a stale one is stored, and their 401 (wrong credentials) is left to
+  the caller. `client.ts` exports the app-wide `http` wired to the session store: a 401 clears the
+  session and calls the handler set via `setSessionExpiredHandler` — `main.ts` sets it to
+  `redirectToLogin(router)`. `src/api/` must not import the router (guards in `src/router/guards.ts`
+  may call the API, which would create an import cycle). API functions should import `http` from
+  `@/api/client`.
+- **Session (`src/stores/session.ts`)**: Pinia setup store — `token` (persisted in `localStorage`
+  under `authToken`; if storage access throws, the session stays in memory only), `user` (`User` from `GET /auth/me`), `isAuthenticated`, `setToken`, `setUser`,
+  `clear`.
+- **Router (`src/router/`)**: `createAppRouter(history, guards)`; route names are exported constants
+  (`HOME_ROUTE`, `LOGIN_ROUTE`). Global guards are registered from the `guards` array in
+  `src/router/guards.ts` — add access checks there. `redirectToLogin(router)` navigates to `login`
+  unless already there.
+- **Base UI (`src/components/ui/`)**: `BaseInput` (label + input + error, `v-model`; `class`/`style`
+  go to the wrapper, other attrs to `<input>`), `BaseButton` (`variant` primary/secondary, `loading`/`disabled`, `type="button"` by
+  default), `ErrorMessage` (`role="alert"`, renders nothing for empty message).
+- **Views (`src/views/`)**: routed pages; `HomeView`/`LoginView` are placeholders until the screens
+  are implemented.
+- Tests live next to code in `__tests__/*.spec.ts` (type-checked via `tsconfig.vitest.json`).
 
 ## Styling
 
-Tailwind CSS is configured (`tailwind.config.js`, `postcss.config.js`) but much of the UI still uses scoped `<style>` blocks with hardcoded hex colors (`#d4d1fe`, `#583f9b`, `#35354f`) rather than Tailwind utility classes — both approaches currently coexist.
+Layout comes from the Figma file `FAPPJ3LrAUEY8indrAbfnV`, section «Финансовый менеджер. Разработка»
+(node `136:10`). The Tailwind theme (`tailwind.config.js`) carries its tokens — colors (`primary`,
+`surface`, `ink`, `sidebar`, `success`/`warning`/`danger`), fonts (`font-sans` = Onest,
+`font-brand` = Manrope, self-hosted via `@fontsource`), font sizes with the mockup's letter-spacing,
+radii (`rounded` = 10px, `rounded-md` = 8px, `rounded-sm` = 5px), `h-control` = 50px. Use these
+tokens and Tailwind utilities, not hardcoded hex values or scoped CSS.
 
 ## UI language
 
-User-facing strings (labels, buttons, alerts) are in Russian; keep new user-facing text consistent with this.
+User-facing strings (labels, buttons, messages) are in Russian; keep new text consistent with this.
