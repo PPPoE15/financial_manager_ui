@@ -13,6 +13,8 @@ export function useSignIn(): (credentials: LoginRequest) => Promise<void> {
   return async (credentials) => {
     const tokens = await login(credentials)
     session.setToken(tokens.access_token)
+    // TODO(FM-13): после входа всегда главная; вернуть на исходный защищённый маршрут (redirect в query)
+    // вместе с guard-ом неавторизованного доступа.
     await router.push({ name: HOME_ROUTE })
   }
 }
