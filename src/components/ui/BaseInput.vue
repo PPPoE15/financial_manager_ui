@@ -34,7 +34,7 @@ const errorId = computed(() => `${inputId.value}-error`)
 
 <template>
   <div class="flex flex-col gap-[11px]" v-bind="rootAttrs">
-    <label :for="inputId" class="text-base font-medium text-ink">{{ label }}</label>
+    <label :for="inputId" class="text-base font-medium leading-5 text-ink">{{ label }}</label>
     <input
       :id="inputId"
       v-model="model"
