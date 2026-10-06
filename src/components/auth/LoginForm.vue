@@ -15,6 +15,8 @@ const submitting = ref(false)
 
 const signIn = useSignIn()
 
+// TODO(FM-12): логика отправки (защита от повтора, валидация, mapAuthError) дублируется в LoginForm и
+// RegistrationForm — вынести в общий composable.
 async function onSubmit(): Promise<void> {
   // Повторная отправка (двойной клик, Enter во время запроса) не уходит вторым запросом
   if (submitting.value) return

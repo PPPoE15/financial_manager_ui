@@ -21,6 +21,9 @@ interface ProblemResponse {
 }
 
 // Сообщения бэкенда в 422 приходят от pydantic на английском, поэтому показываем свои — по имени поля
+// TODO(FM-12): тексты описывают только длину, а 422 бывает и по другим правилам (управляющие символы в имени
+// не проверяются на клиенте) — тогда сообщение вводит в заблуждение. Числа 64/8/128 продублированы
+// из констант validation.ts — вынести общие ограничения в один модуль.
 const FIELD_FORMAT_ERRORS: Record<AuthField, string> = {
   name: 'Проверьте, как к вам обращаться: от 1 до 64 символов',
   email: 'Проверьте адрес электронной почты',
@@ -32,6 +35,8 @@ function isAuthField(field: string | undefined): field is AuthField {
   return field !== undefined && Object.prototype.hasOwnProperty.call(FIELD_FORMAT_ERRORS, field)
 }
 
+// NOTE(FM-12): ошибки раскладываются по всем полям регистрации; на форме входа поле, которого на ней нет
+// (например, name), молча потеряется. Сейчас недостижимо — вход отправляет только email и password.
 function validationErrors(data: ProblemResponse): AuthFormError {
   const fields: AuthFormError['fields'] = {}
   for (const { field } of data.validation ?? []) {

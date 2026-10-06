@@ -17,6 +17,8 @@ const tabs = [
 ] as const
 
 // На узком экране логотип стоит на светлом фоне: тот же SVG из макета, перекрашенный маской в primary
+// TODO(FM-12): взять url(...) в кавычки — если SVG станет меньше assetsInlineLimit (4 КиБ), Vite встроит его
+// как data-URI, и значение без кавычек может оказаться невалидным.
 const logoMask = {
   maskImage: `url(${logoUrl})`,
   WebkitMaskImage: `url(${logoUrl})`,

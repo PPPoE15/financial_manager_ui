@@ -21,6 +21,8 @@ const submitting = ref(false)
 
 const signIn = useSignIn()
 
+// TODO(FM-12): логика отправки (защита от повтора, валидация, mapAuthError) дублируется в LoginForm и
+// RegistrationForm — вынести в общий composable.
 async function onSubmit(): Promise<void> {
   // Повторная отправка (двойной клик, Enter во время запроса) не уходит вторым запросом
   if (submitting.value) return
@@ -45,6 +47,8 @@ async function onSubmit(): Promise<void> {
     try {
       await signIn({ email: payload.email, password: payload.password })
     } catch {
+      // TODO(FM-12): форма остаётся активной — повторная отправка даст 409 «уже зарегистрирован».
+      // Лучше сразу переключать на вкладку «Вход» с подставленной почтой.
       message.value = 'Аккаунт создан, но войти автоматически не удалось. Войдите на вкладке «Вход»'
     }
   } finally {

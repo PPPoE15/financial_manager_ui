@@ -31,7 +31,9 @@ function compact<T>(errors: Record<keyof T, string | undefined>): FieldErrors<T>
 export function validateLogin(form: LoginRequest): FieldErrors<LoginRequest> {
   return compact<LoginRequest>({
     email: emailError(form.email),
-    // Длину пароля при входе не проверяем: неверный пароль любой длины — просто неверный пароль
+    // TODO(FM-12): сервер и при входе требует пароль 8–128 символов, и короткий неверный пароль даёт 422
+    // («Пароль должен быть от 8 до 128 символов») вместо «Неверный email или пароль». Решить: проверять
+    // длину и здесь или на форме входа показывать 422 по паролю как неверные данные.
     password: form.password ? undefined : 'Введите пароль',
   })
 }
