@@ -1,14 +1,22 @@
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { createPinia, setActivePinia } from 'pinia'
 import { createMemoryHistory, type NavigationGuard } from 'vue-router'
 
-import { HOME_ROUTE, LOGIN_ROUTE, createAppRouter, redirectToLogin } from '@/router'
+import { HOME_ROUTE, LOGIN_ROUTE, REGISTER_ROUTE, createAppRouter, redirectToLogin } from '@/router'
 
 describe('createAppRouter', () => {
-  it('содержит маршруты главной и экрана входа', () => {
+  // Guard-ы приложения читают сессию из хранилища
+  beforeEach(() => {
+    localStorage.clear()
+    setActivePinia(createPinia())
+  })
+
+  it('содержит маршруты главной, входа и регистрации', () => {
     const router = createAppRouter(createMemoryHistory())
 
     expect(router.resolve({ name: HOME_ROUTE }).path).toBe('/')
     expect(router.resolve({ name: LOGIN_ROUTE }).path).toBe('/login')
+    expect(router.resolve({ name: REGISTER_ROUTE }).path).toBe('/register')
   })
 
   it('неизвестный путь перенаправляет на главную', async () => {

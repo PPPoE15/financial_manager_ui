@@ -7,9 +7,9 @@ import {
 } from 'vue-router'
 
 import { guards as appGuards } from '@/router/guards'
+import { HOME_ROUTE, LOGIN_ROUTE, REGISTER_ROUTE } from '@/router/names'
 
-export const HOME_ROUTE = 'home'
-export const LOGIN_ROUTE = 'login'
+export { HOME_ROUTE, LOGIN_ROUTE, REGISTER_ROUTE } from '@/router/names'
 
 export function createAppRouter(
   history: RouterHistory,
@@ -19,7 +19,20 @@ export function createAppRouter(
     history,
     routes: [
       { path: '/', name: HOME_ROUTE, component: () => import('@/views/HomeView.vue') },
-      { path: '/login', name: LOGIN_ROUTE, component: () => import('@/views/LoginView.vue') },
+      // Вход и регистрация — один экран с двумя режимами; режим задаёт маршрут, чтобы вкладку
+      // можно было открыть по ссылке и вернуться к ней кнопкой «Назад»
+      {
+        path: '/login',
+        name: LOGIN_ROUTE,
+        component: () => import('@/views/LoginView.vue'),
+        meta: { guestOnly: true },
+      },
+      {
+        path: '/register',
+        name: REGISTER_ROUTE,
+        component: () => import('@/views/LoginView.vue'),
+        meta: { guestOnly: true },
+      },
       { path: '/:pathMatch(.*)*', redirect: { name: HOME_ROUTE } },
     ],
   })

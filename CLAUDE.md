@@ -54,15 +54,27 @@ Vue 3 + TypeScript + Vite SPA («Финансовый менеджер»), Pinia
 - **Session (`src/stores/session.ts`)**: Pinia setup store — `token` (persisted in `localStorage`
   under `authToken`; if storage access throws, the session stays in memory only), `user` (`User` from `GET /auth/me`), `isAuthenticated`, `setToken`, `setUser`,
   `clear`.
-- **Router (`src/router/`)**: `createAppRouter(history, guards)`; route names are exported constants
-  (`HOME_ROUTE`, `LOGIN_ROUTE`). Global guards are registered from the `guards` array in
-  `src/router/guards.ts` — add access checks there. `redirectToLogin(router)` navigates to `login`
-  unless already there.
+- **Router (`src/router/`)**: `createAppRouter(history, guards)`; route names are constants in
+  `src/router/names.ts` (`HOME_ROUTE`, `LOGIN_ROUTE`, `REGISTER_ROUTE`), re-exported from
+  `@/router` — guards import them from `names.ts` to avoid an import cycle. Global guards are
+  registered from the `guards` array in `src/router/guards.ts` — add access checks there.
+  `guestOnlyGuard` sends an authenticated user away from routes with `meta.guestOnly` (login,
+  registration) to home. `redirectToLogin(router)` navigates to `login` unless already there.
 - **Base UI (`src/components/ui/`)**: `BaseInput` (label + input + error, `v-model`; `class`/`style`
   go to the wrapper, other attrs to `<input>`), `BaseButton` (`variant` primary/secondary, `loading`/`disabled`, `type="button"` by
   default), `ErrorMessage` (`role="alert"`, renders nothing for empty message).
-- **Views (`src/views/`)**: routed pages; `HomeView`/`LoginView` are placeholders until the screens
-  are implemented.
+- **Auth (`src/auth/`, `src/api/auth.ts`, `src/components/auth/`)**: `api/auth.ts` — `login`
+  (`POST /auth/token`) and `register` (`POST /auth/registration`), both with `skipAuth`.
+  `auth/validation.ts` — client-side checks mirroring `contracts/auth.openapi.yaml`;
+  `auth/errors.ts` — `mapAuthError` turns a backend error into a form-level `message` and/or
+  per-field `fields` (422 messages from pydantic are English, so field texts are our own);
+  `auth/useSignIn.ts` — login → `session.setToken` → home. `LoginForm`/`RegistrationForm` share
+  `AuthFormLayout` (form-level error above the submit button, `novalidate`, button `loading` while
+  the request is in flight — repeated submits are ignored). Registration signs in right after.
+- **Views (`src/views/`)**: routed pages. `LoginView` serves both `/login` and `/register` (mode
+  from the route name, tabs are `RouterLink`s) per Figma Frame 6/7; below `lg` the green panel is
+  hidden and a compact logo (same SVG, recoloured via CSS mask) sits above the form. `HomeView` is
+  a placeholder until FM-13.
 - Tests live next to code in `__tests__/*.spec.ts` (type-checked via `tsconfig.vitest.json`).
 
 ## Styling
