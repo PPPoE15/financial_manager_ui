@@ -18,7 +18,12 @@ export function createAppRouter(
   const router = createRouter({
     history,
     routes: [
-      { path: '/', name: HOME_ROUTE, component: () => import('@/views/HomeView.vue') },
+      // Защищённые экраны — внутри общего каркаса (боковая панель с пользователем и «Выход»)
+      {
+        path: '/',
+        component: () => import('@/components/layout/AppLayout.vue'),
+        children: [{ path: '', name: HOME_ROUTE, component: () => import('@/views/HomeView.vue') }],
+      },
       // Вход и регистрация — один экран с двумя режимами; режим задаёт маршрут, чтобы вкладку
       // можно было открыть по ссылке и вернуться к ней кнопкой «Назад»
       {

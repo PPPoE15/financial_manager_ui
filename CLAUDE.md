@@ -59,7 +59,12 @@ Vue 3 + TypeScript + Vite SPA («Финансовый менеджер»), Pinia
   `@/router` — guards import them from `names.ts` to avoid an import cycle. Global guards are
   registered from the `guards` array in `src/router/guards.ts` — add access checks there.
   `guestOnlyGuard` sends an authenticated user away from routes with `meta.guestOnly` (login,
-  registration) to home. `redirectToLogin(router)` navigates to `login` unless already there.
+  registration) to home. `authGuard` protects every other route: without a token → `login` with
+  `?redirect=<fullPath>` (`useSignIn` returns there after login, only for in-app paths); with a token
+  and no loaded user it calls `GET /auth/me` (`getCurrentUser`) — a 401 clears the session and the
+  navigation goes to `login`, other errors let it through without a user. Protected routes are
+  children of the `/` route rendered inside `AppLayout`. `redirectToLogin(router)` navigates to
+  `login` unless already there.
 - **Base UI (`src/components/ui/`)**: `BaseInput` (label + input + error, `v-model`; `class`/`style`
   go to the wrapper, other attrs to `<input>`), `BaseButton` (`variant` primary/secondary, `loading`/`disabled`, `type="button"` by
   default), `ErrorMessage` (`role="alert"`, renders nothing for empty message).
@@ -74,7 +79,11 @@ Vue 3 + TypeScript + Vite SPA («Финансовый менеджер»), Pinia
 - **Views (`src/views/`)**: routed pages. `LoginView` serves both `/login` and `/register` (mode
   from the route name, tabs are `RouterLink`s) per Figma Frame 6/7; below `lg` the green panel is
   hidden and a compact logo (same SVG, recoloured via CSS mask) sits above the form. `HomeView` is
-  a placeholder until FM-13.
+  a placeholder (greeting «Добрый день, <name>») until the real overview screen (FM-2+).
+- **Shell (`src/components/layout/AppLayout.vue`)**: Figma Frame 8 sidebar — logo, menu (only
+  «Обзор» so far), user block (initial instead of the mockup's photo — the API has no avatar) and
+  the «Выход» button (`auth/useSignOut.ts`: clears the session → `login`). No narrow mockup: below
+  `lg` the sidebar becomes a top bar without the menu.
 - Tests live next to code in `__tests__/*.spec.ts` (type-checked via `tsconfig.vitest.json`).
 
 ## Styling
