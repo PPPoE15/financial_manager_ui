@@ -12,7 +12,8 @@ const greeting = computed(() =>
 </script>
 
 <template>
-  <div class="px-4 py-8 sm:px-10 lg:px-[70px] lg:pt-[106px]">
+  <div class="px-4 py-8 sm:px-10 lg:px-[69px] lg:pt-[106px]">
+    <!-- lg:px-[69px]: в макете панель шириной 278px начинается с x=-1, заголовок — с x=347 -->
     <h1 class="text-xl font-bold text-primary sm:text-3xl">{{ greeting }}</h1>
   </div>
 </template>

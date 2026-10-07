@@ -38,7 +38,7 @@ const menu = [{ route: HOME_ROUTE, label: 'Обзор' }] as const
             class="absolute -left-[4.05px] top-0 h-[36.45px] w-[35.44px] max-w-none"
           />
         </div>
-        <p class="mt-[1.7px] font-brand text-[13.5px] font-bold leading-normal">
+        <p class="mt-[1.7px] font-brand text-[13.5px] font-bold leading-[18px]">
           Финансовый<br />менеджер
         </p>
       </div>
