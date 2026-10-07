@@ -73,7 +73,7 @@ Vue 3 + TypeScript + Vite SPA («Финансовый менеджер»), Pinia
   `auth/validation.ts` — client-side checks mirroring `contracts/auth.openapi.yaml`;
   `auth/errors.ts` — `mapAuthError` turns a backend error into a form-level `message` and/or
   per-field `fields` (422 messages from pydantic are English, so field texts are our own);
-  `auth/useSignIn.ts` — login → `session.setToken` → home. `LoginForm`/`RegistrationForm` share
+  `auth/useSignIn.ts` — login → `session.setToken` → `redirect` from the query (in-app paths only) or home. `LoginForm`/`RegistrationForm` share
   `AuthFormLayout` (form-level error above the submit button, `novalidate`, button `loading` while
   the request is in flight — repeated submits are ignored). Registration signs in right after.
 - **Views (`src/views/`)**: routed pages. `LoginView` serves both `/login` and `/register` (mode

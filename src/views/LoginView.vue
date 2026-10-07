@@ -74,6 +74,8 @@ const logoMask = {
           {{ isLogin ? 'Войти в аккаунт' : 'Создать аккаунт' }}
         </h2>
 
+        <!-- TODO(FM-13): вкладки ведут на маршрут без query — `redirect` теряется при переключении на
+             «Регистрацию», и после автовхода пользователь попадает на главную. Проявится с FM-2. -->
         <nav
           aria-label="Вход или регистрация"
           class="mt-[23px] grid h-control grid-cols-2 gap-[6px] rounded bg-surface-muted p-[3px]"

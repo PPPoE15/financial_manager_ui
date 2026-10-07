@@ -19,6 +19,8 @@ const userName = computed(() => session.user?.name ?? '')
 const userInitial = computed(() => userName.value.trim().charAt(0).toUpperCase())
 
 // TODO(FM-2): добавить пункты «Мои категории», «Новая операция», «Настройки» вместе с их экранами.
+// TODO(FM-2): активный пункт сейчас — точное совпадение имени маршрута; с вложенными экранами раздела
+// перейти на состояние RouterLink (`isActive`/`isExactActive`), иначе подсветка пропадёт.
 const menu = [{ route: HOME_ROUTE, label: 'Обзор' }] as const
 </script>
 

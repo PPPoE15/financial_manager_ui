@@ -12,6 +12,8 @@ declare module 'vue-router' {
 }
 
 /** Экраны только для гостей (вход, регистрация): авторизованного пользователя уводит на главную. */
+// NOTE(FM-13): с токеном уводит с `/login?redirect=…` на главную и отбрасывает `redirect`; если токен
+// истёк, следующий 401 от `/me` вернёт на вход уже без исходного адреса.
 export const guestOnlyGuard: NavigationGuard = (to) =>
   to.meta.guestOnly && useSessionStore().isAuthenticated ? { name: HOME_ROUTE } : true
 
@@ -35,8 +37,10 @@ export const authGuard: NavigationGuard = async (to) => {
     session.setUser(await getCurrentUser())
   } catch {
     if (!session.isAuthenticated) return toLogin(to)
-    // NOTE(FM-13): прочие ошибки (сеть, 5xx) не закрывают доступ — экран открывается без имени,
-    // пользователь загрузится при следующем переходе.
+    // NOTE(FM-13): прочие ошибки (сеть, 5xx) не закрывают доступ — экран открывается без имени.
+    // Повторный запрос будет только при следующем переходе на защищённый экран; пока такой экран один,
+    // имя появится лишь после перезагрузки страницы. Параллельные переходы, пока пользователь не
+    // загружен, шлют `/me` каждый своим запросом (дедупликации нет).
   }
   return true
 }
