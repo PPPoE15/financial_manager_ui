@@ -17,3 +17,9 @@ export async function register(form: RegistrationRequest): Promise<User> {
   const { data } = await http.post<User>('/registration', form, GUEST_REQUEST)
   return data
 }
+
+/** `GET /auth/me` — текущий пользователь по токену сессии; 401 сбрасывает сессию (см. `@/api/client`). */
+export async function getCurrentUser(): Promise<User> {
+  const { data } = await http.get<User>('/me', { api: 'auth' })
+  return data
+}

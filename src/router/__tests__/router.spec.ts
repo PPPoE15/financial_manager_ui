@@ -20,7 +20,7 @@ describe('createAppRouter', () => {
   })
 
   it('неизвестный путь перенаправляет на главную', async () => {
-    const router = createAppRouter(createMemoryHistory())
+    const router = createAppRouter(createMemoryHistory(), [])
 
     await router.push('/unknown/nested')
 
@@ -48,7 +48,7 @@ describe('createAppRouter', () => {
   })
 
   it('redirectToLogin переводит на экран входа', async () => {
-    const router = createAppRouter(createMemoryHistory())
+    const router = createAppRouter(createMemoryHistory(), [])
     await router.push({ name: HOME_ROUTE })
     const push = vi.spyOn(router, 'push')
 
