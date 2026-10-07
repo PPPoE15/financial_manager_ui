@@ -4,12 +4,12 @@ import { createPinia, setActivePinia } from 'pinia'
 import { AxiosError, AxiosHeaders, type InternalAxiosRequestConfig } from 'axios'
 import { createMemoryHistory, type Router } from 'vue-router'
 
-import { login, register } from '@/api/auth'
+import { getCurrentUser, login, register } from '@/api/auth'
 import { HOME_ROUTE, LOGIN_ROUTE, REGISTER_ROUTE, createAppRouter } from '@/router'
 import { useSessionStore } from '@/stores/session'
 import LoginView from '@/views/LoginView.vue'
 
-vi.mock('@/api/auth', () => ({ login: vi.fn(), register: vi.fn() }))
+vi.mock('@/api/auth', () => ({ login: vi.fn(), register: vi.fn(), getCurrentUser: vi.fn() }))
 
 const tokens = { access_token: 'access-token', token_type: 'bearer' }
 const user = {
@@ -42,9 +42,9 @@ function deferred<T>() {
 let router: Router
 let wrapper: VueWrapper | undefined
 
-async function mountAt(name: string) {
+async function mountAt(name: string, query: Record<string, string> = {}) {
   router = createAppRouter(createMemoryHistory())
-  await router.push({ name })
+  await router.push({ name, query })
   await router.isReady()
   wrapper = mount(LoginView, { global: { plugins: [router] }, attachTo: document.body })
   return wrapper
@@ -83,6 +83,8 @@ describe('LoginView', () => {
     setActivePinia(createPinia())
     vi.mocked(login).mockReset()
     vi.mocked(register).mockReset()
+    // После входа guard главной загружает текущего пользователя
+    vi.mocked(getCurrentUser).mockReset().mockResolvedValue(user)
   })
 
   afterEach(() => {
@@ -141,6 +143,31 @@ describe('LoginView', () => {
       expect(useSessionStore().token).toBe('access-token')
       await vi.waitFor(() => expect(router.currentRoute.value.name).toBe(HOME_ROUTE))
     })
+
+    it('после входа возвращает на защищённую страницу из redirect', async () => {
+      vi.mocked(login).mockResolvedValue(tokens)
+      const w = await mountAt(LOGIN_ROUTE, { redirect: '/?from=guard' })
+      await fillLogin(w)
+
+      await w.get('form').trigger('submit')
+      await flushPromises()
+
+      await vi.waitFor(() => expect(router.currentRoute.value.fullPath).toBe('/?from=guard'))
+    })
+
+    it.each(['https://evil.example/', '//evil.example/', '/\\evil.example', 'login'])(
+      'внешний или некорректный redirect %s игнорирует и ведёт на главную',
+      async (redirect) => {
+        vi.mocked(login).mockResolvedValue(tokens)
+        const w = await mountAt(LOGIN_ROUTE, { redirect })
+        await fillLogin(w)
+
+        await w.get('form').trigger('submit')
+        await flushPromises()
+
+        await vi.waitFor(() => expect(router.currentRoute.value.fullPath).toBe('/'))
+      },
+    )
 
     it('неверный пароль — сообщение над кнопкой, без alert', async () => {
       const alert = vi.spyOn(window, 'alert').mockImplementation(() => {})

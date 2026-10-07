@@ -1,6 +1,7 @@
-import type { NavigationGuard } from 'vue-router'
+import type { NavigationGuard, RouteLocationNormalized } from 'vue-router'
 
-import { HOME_ROUTE } from '@/router/names'
+import { getCurrentUser } from '@/api/auth'
+import { HOME_ROUTE, LOGIN_ROUTE } from '@/router/names'
 import { useSessionStore } from '@/stores/session'
 
 declare module 'vue-router' {
@@ -10,15 +11,35 @@ declare module 'vue-router' {
   }
 }
 
-// NOTE(FM-13): «авторизован» = токен есть в хранилище, срок действия не проверяется. С истёкшим токеном
-// guard уводит с /login на главную, а там пока нет запросов к API, которые сбросили бы сессию по 401.
-// Закрывается в FM-13 (защищённая оболочка: /auth/me на главной, редирект при истёкшем токене, «Выйти»).
 /** Экраны только для гостей (вход, регистрация): авторизованного пользователя уводит на главную. */
 export const guestOnlyGuard: NavigationGuard = (to) =>
   to.meta.guestOnly && useSessionStore().isAuthenticated ? { name: HOME_ROUTE } : true
 
+function toLogin(to: RouteLocationNormalized) {
+  return { name: LOGIN_ROUTE, query: { redirect: to.fullPath } }
+}
+
 /**
- * Глобальные guard-ы приложения, выполняются по порядку перед каждым переходом.
- * Сюда подключаются проверки доступа (например, редирект неавторизованного пользователя на вход).
+ * Все экраны, кроме гостевых, — только после входа: без токена ведёт на экран входа и запоминает адрес
+ * в `redirect`. При первом переходе с токеном загружает текущего пользователя (`GET /auth/me`); истёкший
+ * токен даёт 401, HTTP-клиент сбрасывает сессию — и переход тоже уходит на экран входа.
  */
-export const guards: NavigationGuard[] = [guestOnlyGuard]
+export const authGuard: NavigationGuard = async (to) => {
+  if (to.meta.guestOnly) return true
+
+  const session = useSessionStore()
+  if (!session.isAuthenticated) return toLogin(to)
+  if (session.user !== null) return true
+
+  try {
+    session.setUser(await getCurrentUser())
+  } catch {
+    if (!session.isAuthenticated) return toLogin(to)
+    // NOTE(FM-13): прочие ошибки (сеть, 5xx) не закрывают доступ — экран открывается без имени,
+    // пользователь загрузится при следующем переходе.
+  }
+  return true
+}
+
+/** Глобальные guard-ы приложения, выполняются по порядку перед каждым переходом. */
+export const guards: NavigationGuard[] = [guestOnlyGuard, authGuard]

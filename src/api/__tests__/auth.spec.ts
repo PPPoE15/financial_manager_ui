@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 
-import { login, register } from '@/api/auth'
+import { getCurrentUser, login, register } from '@/api/auth'
 import { http } from '@/api/client'
 
 const credentials = { email: 'name@example.com', password: 's3cret-Passw0rd' }
@@ -23,5 +23,18 @@ describe('API авторизации', () => {
     await expect(register(form)).resolves.toEqual(user)
 
     expect(post).toHaveBeenCalledWith('/registration', form, { api: 'auth', skipAuth: true })
+  })
+
+  it('getCurrentUser отправляет GET /me в API авторизации с токеном сессии', async () => {
+    const user = {
+      uid: '3fa85f64-5717-4562-b3fc-2c963f66afa6',
+      name: 'Артём',
+      email: 'a@example.com',
+    }
+    const get = vi.spyOn(http, 'get').mockResolvedValue({ data: user })
+
+    await expect(getCurrentUser()).resolves.toEqual(user)
+
+    expect(get).toHaveBeenCalledWith('/me', { api: 'auth' })
   })
 })
