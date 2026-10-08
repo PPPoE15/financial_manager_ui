@@ -1,6 +1,7 @@
 /** Прочерк вместо отсутствующей суммы (`null` в API): «нет данных» — это не то же самое, что `0 ₽`. */
 export const MISSING_VALUE = '—'
 
+// TODO(FM-28): здесь буквальный U+00A0 — в диффе не отличить от пробела, записать как '\u00a0'.
 const NBSP = ' '
 
 /**
@@ -11,6 +12,8 @@ const NBSP = ' '
  */
 export function formatMoney(value: number | null): string {
   if (value === null) return MISSING_VALUE
+  // NOTE(FM-28): рассчитан на целые рубли из API; для дробных знак берётся до округления
+  // (`-0.4` → `−0 ₽`), NaN/Infinity не обрабатываются.
   const sign = value < 0 ? '−' : ''
   const digits = String(Math.abs(Math.round(value))).replace(/\B(?=(\d{3})+(?!\d))/g, NBSP)
   return `${sign}${digits}${NBSP}₽`

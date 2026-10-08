@@ -7,6 +7,9 @@ export interface CategoryRef {
   name: string
 }
 
+// NOTE(FM-28): агрегаты (`fact`, `average`, итоги) в контракте int64 (`MoneyTotal`), а number точен до 2^53 —
+// для рублёвых сумм недостижимо. Скринридер в итоговой строке при `money_plan: null` читает «план не задан»,
+// хотя точнее «ни у одной статьи план не задан».
 /** Факт месяца: сумма транзакций; `null` — месяц ещё не наступил. */
 export interface MonthFact {
   month: number

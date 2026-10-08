@@ -23,6 +23,9 @@ export function useBudgetStructure() {
   const loading = ref(false)
   const failed = ref(false)
 
+  // TODO(FM-28): устаревшие запросы не отменяются, их результат только отбрасывается: быстрый перебор лет
+  // шлёт запрос на каждый шаг. Отменять через AbortController (`signal` в axios) / onWatcherCleanup —
+  // заодно уйдут три проверки счётчика в try/catch/finally.
   let latestRequest = 0
 
   async function load(): Promise<void> {

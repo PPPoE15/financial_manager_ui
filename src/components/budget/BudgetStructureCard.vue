@@ -22,6 +22,8 @@ const emptyText = computed(() =>
   categoryType.value === 'income' ? 'Статей доходов пока нет' : 'Статей расходов пока нет',
 )
 
+// TODO(FM-28): классы стрелок года (размер, фон, фокус, disabled) повторяют вторичный вариант BaseButton —
+// при смене его стиля разойдутся; вынести общие классы или дать BaseButton размер «квадратная иконка».
 const controlFocus =
   'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary'
 </script>
@@ -93,6 +95,11 @@ const controlFocus =
     </div>
 
     <div class="mt-9">
+      <!-- TODO(FM-28): при смене года/типа таблица заменяется на «Загрузка…» — карточка схлопывается,
+           прокрутка к декабрю сбрасывается. Показывать заглушку только при `loading && !data`, при
+           перезапросе оставлять прежнюю таблицу приглушённой.
+           TODO(FM-28): role="status" появляется сразу с текстом — скринридеры такой live-регион часто не
+           объявляют; держать постоянный контейнер статуса и менять только текст. -->
       <p v-if="loading" role="status" class="px-3 py-10 text-center text-sm text-ink-muted">
         Загрузка…
       </p>

@@ -21,6 +21,8 @@ defineProps<{
       missing-label="нет завершённых месяцев"
       :class="COLUMN_CLASS.average"
     />
+    <!-- TODO(FM-28): месяц берётся по позиции в `months`, а не по `month`; контракт обещает январь–декабрь
+         по порядку — сверить с реализацией FM-27 при приёмке или искать ячейку по номеру месяца. -->
     <MoneyCell
       v-for="(month, index) in months"
       :key="month.month"
