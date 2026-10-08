@@ -79,7 +79,21 @@ Vue 3 + TypeScript + Vite SPA («Финансовый менеджер»), Pinia
 - **Views (`src/views/`)**: routed pages. `LoginView` serves both `/login` and `/register` (mode
   from the route name, tabs are `RouterLink`s) per Figma Frame 6/7; below `lg` the green panel is
   hidden and a compact logo (same SVG, recoloured via CSS mask) sits above the form. `HomeView` is
-  a placeholder (greeting «Добрый день, <name>») until the real overview screen (FM-2+).
+  the «Обзор» screen: greeting «Добрый день, <name>» and the budget-structure card (other Frame 8
+  cards come with FM-2+).
+- **Budget structure (`src/budget/`, `src/api/budget.ts`, `src/components/budget/`)**:
+  `getBudgetStructure(year, categoryType)` → `GET /transaction/budget-structure`.
+  `useBudgetStructure` holds `year` (default current, clamped to 2000–2099) and `categoryType`
+  (default `outcome`), refetches on change and drops responses/errors of superseded requests.
+  `BudgetStructureCard` (header, «Расходы / Доходы» toggle, year arrows, loading / error with
+  «Повторить» / empty states — none of these are in the mockup, agreed in FM-28) wraps
+  `BudgetStructureTable`: horizontally scrolled inside the card, «Категория» sticky; column widths
+  in `columns.ts`. `null` amounts render as a pale «—» with an sr-only reason (план не задан /
+  нет завершённых месяцев / месяц ещё не наступил), `0` as «0 ₽». The plan/fact colouring from the
+  mockup is not implemented yet (TODO in the table).
+- **Money (`src/utils/money.ts`)**: `formatMoney(value)` — app-wide ₽ formatter for integer roubles:
+  `10 000 ₽` with NBSP grouping (also for 4-digit numbers, unlike `Intl` ru-RU), `−` for negatives,
+  `null` → `MISSING_VALUE` («—»).
 - **Shell (`src/components/layout/AppLayout.vue`)**: Figma Frame 8 sidebar — logo, menu (only
   «Обзор» so far), user block (initial instead of the mockup's photo — the API has no avatar) and
   the «Выход» button (`auth/useSignOut.ts`: clears the session → `login`). No narrow mockup: below
