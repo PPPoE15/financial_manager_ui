@@ -32,7 +32,8 @@ Vite `base` must stay `/` (relative base breaks assets on nested-route reloads).
 Node: `^22.22.2 || ^24.15.0 || >=26` (jsdom/vitest requirements); the Docker builder uses
 `node:22.22.2-alpine`. In `npm run dev` without `VITE_API_URL`/`VITE_AUTH_API_URL`, Vite proxies
 `/transaction/` → `localhost:8083` (prefix stripped) and `/auth/` → `localhost:8082` (prefix kept —
-the auth service mounts its API under `/auth`), the same way nginx does (the fm_devops compose ports).
+the auth service mounts its API under `/auth`) — ports from the fm_devops compose; prefix handling is the
+same as in nginx.
 
 ## Architecture
 

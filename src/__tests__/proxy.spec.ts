@@ -6,6 +6,8 @@ import { fileURLToPath, URL } from 'node:url'
 import { describe, expect, it } from 'vitest'
 import type { ProxyOptions } from 'vite'
 
+// TODO(FM-31): импортируется весь конфиг с плагинами (vue, devtools) ради server.proxy — отсюда окружение node и
+// медленный импорт; вынести таблицу прокси в отдельный модуль и импортировать его здесь и в vite.config.ts
 import viteConfig from '../../vite.config'
 
 // Сервис авторизации сам монтирует API под /auth, сервис транзакций — без префикса,
@@ -45,6 +47,8 @@ describe('nginx.conf', () => {
     'utf8',
   )
 
+  // NOTE(FM-31): упрощённый разбор регуляркой — защищает от регрессии FM-31, но падает на безобидных правках
+  // (модификатор ^~, вложенный блок, эквивалентный proxy_pass с URI /auth/) и не видит перекрывающих location
   function proxyPass(location: string): string | undefined {
     const block = nginxConf.match(new RegExp(`location ${location} \\{([^}]*)\\}`))?.[1]
     return block?.match(/proxy_pass\s+([^;]+);/)?.[1]
