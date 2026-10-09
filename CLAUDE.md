@@ -25,15 +25,16 @@ make push_dev     # docker login && docker push pppoe15/fm-ui:dev
 ```
 The Dockerfile does a multi-stage build (`npm run build` → static files served by nginx using
 `nginx/nginx.conf`). nginx listens on 443 with certs mounted at `/etc/nginx/ssl`, proxies `/auth/`
-(prefix kept) and `/transaction/` (prefix stripped) to the backend containers and falls back to `index.html` for SPA routes.
+and `/transaction/` to the backend containers with the path unchanged (both services mount their API under
+their own prefix) and falls back to `index.html` for SPA routes.
 Missing files under `/assets/` return 404 (not `index.html`), so a stale lazy chunk fails cleanly.
 Vite `base` must stay `/` (relative base breaks assets on nested-route reloads).
 
 Node: `^22.22.2 || ^24.15.0 || >=26` (jsdom/vitest requirements); the Docker builder uses
 `node:22.22.2-alpine`. In `npm run dev` without `VITE_API_URL`/`VITE_AUTH_API_URL`, Vite proxies
-`/transaction/` → `localhost:8083` (prefix stripped) and `/auth/` → `localhost:8082` (prefix kept —
-the auth service mounts its API under `/auth`) — ports from the fm_devops compose; prefix handling is the
-same as in nginx.
+`/transaction/` → `localhost:8083` and `/auth/` → `localhost:8082` (ports from the fm_devops compose),
+keeping the path like nginx does. When pointing the env vars at a backend directly, include the prefix
+(`http://localhost:8083/transaction`, `http://localhost:8082/auth`).
 
 ## Architecture
 

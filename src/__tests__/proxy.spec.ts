@@ -10,8 +10,8 @@ import type { ProxyOptions } from 'vite'
 // медленный импорт; вынести таблицу прокси в отдельный модуль и импортировать его здесь и в vite.config.ts
 import viteConfig from '../../vite.config'
 
-// Сервис авторизации сам монтирует API под /auth, сервис транзакций — без префикса,
-// поэтому префикс снимается только для /transaction/ (в прокси Vite и в nginx одинаково).
+// Оба сервиса сами монтируют API под своим префиксом (/auth, /transaction), поэтому прокси Vite
+// и nginx передают путь как есть.
 
 function devProxy(prefix: string): ProxyOptions {
   const proxy = viteConfig.server?.proxy?.[prefix]
@@ -33,11 +33,11 @@ describe('прокси Vite в dev-режиме', () => {
     expect(forwardedPath(proxy, '/auth/token')).toBe('/auth/token')
   })
 
-  it('отправляет /transaction/ в сервис транзакций без префикса', () => {
+  it('отправляет /transaction/ в сервис транзакций, сохраняя префикс', () => {
     const proxy = devProxy('/transaction/')
 
     expect(proxy.target).toBe('http://localhost:8083')
-    expect(forwardedPath(proxy, '/transaction/categories')).toBe('/categories')
+    expect(forwardedPath(proxy, '/transaction/categories')).toBe('/transaction/categories')
   })
 })
 
@@ -58,7 +58,7 @@ describe('nginx.conf', () => {
     expect(proxyPass('/auth/')).toBe('http://fm_auth_service:80')
   })
 
-  it('проксирует /transaction/ с URI / в proxy_pass — префикс снимается', () => {
-    expect(proxyPass('/transaction/')).toBe('http://fm_transaction_service:80/')
+  it('проксирует /transaction/ без URI в proxy_pass — префикс сохраняется', () => {
+    expect(proxyPass('/transaction/')).toBe('http://fm_transaction_service:80')
   })
 })
