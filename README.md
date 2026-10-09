@@ -15,4 +15,6 @@ make build_dev      # Docker-образ pppoe15/fm-ui:dev
 ```
 
 Переменные окружения: `VITE_API_URL` (API транзакций, по умолчанию `/transaction`),
-`VITE_AUTH_API_URL` (API авторизации, по умолчанию `/auth`).
+`VITE_AUTH_API_URL` (API авторизации, по умолчанию `/auth`). Сервисы сами монтируют API под этими
+префиксами, поэтому при обращении к бэкенду напрямую префикс входит в адрес:
+`VITE_API_URL=http://localhost:8083/transaction`, `VITE_AUTH_API_URL=http://localhost:8082/auth`.

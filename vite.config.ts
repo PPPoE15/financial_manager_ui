@@ -9,17 +9,16 @@ export default defineConfig({
   plugins: [vue(), vueDevTools()],
   // Абсолютный base: относительные пути к ассетам ломаются при обновлении страницы на вложенном маршруте
   base: '/',
-  // В dev-режиме повторяет маршрутизацию nginx: префикс снимается, запрос уходит в контейнер бэкенда
-  // (порты из fm_devops/docker-compose.yaml). Нужен, когда VITE_API_URL/VITE_AUTH_API_URL не заданы.
+  // В dev-режиме повторяет маршрутизацию nginx: запрос уходит в контейнер бэкенда (порты из
+  // fm_devops/docker-compose.yaml) с тем же путём — оба сервиса сами монтируют API под /transaction
+  // и /auth. Нужен, когда VITE_API_URL/VITE_AUTH_API_URL не заданы.
   server: {
     proxy: {
       '/transaction/': {
         target: 'http://localhost:8083',
-        rewrite: (path) => path.replace(/^\/transaction/, ''),
       },
       '/auth/': {
         target: 'http://localhost:8082',
-        rewrite: (path) => path.replace(/^\/auth/, ''),
       },
     },
   },
