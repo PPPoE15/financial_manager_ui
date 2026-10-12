@@ -2,6 +2,7 @@
 import { computed } from 'vue'
 
 import BudgetStructureCard from '@/components/budget/BudgetStructureCard.vue'
+import FirstStepDialog from '@/components/firstStep/FirstStepDialog.vue'
 import { useSessionStore } from '@/stores/session'
 
 // Экран «Обзор» по макету Figma Frame 8 (узел 116:64): приветствие и таблица «Структура бюджета»;
@@ -21,5 +22,9 @@ const greeting = computed(() =>
     <!-- В макете карточка 863px идёт под «Текущим остатком»; пока его нет — сразу под заголовком,
          с тем же отступом, что у остатка (44px) -->
     <BudgetStructureCard class="mt-8 max-w-[863px] lg:mt-[44px]" />
+    <!-- Окно поверх главной, пока не заполнены имя или стартовый остаток. Приветствие обновляется
+         само через session.user; NOTE(FM-39): от стартового остатка на главной пока ничего не зависит —
+         карточка «Сумма бюджета» (`GET /balance`) должна перезапрашиваться после закрытия окна. -->
+    <FirstStepDialog />
   </div>
 </template>

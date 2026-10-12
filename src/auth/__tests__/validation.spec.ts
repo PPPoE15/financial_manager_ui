@@ -40,9 +40,7 @@ describe('validateRegistration', () => {
   })
 
   it('все поля обязательны', () => {
-    expect(
-      validateRegistration({ email: '', password: '', password_confirmation: '' }),
-    ).toEqual({
+    expect(validateRegistration({ email: '', password: '', password_confirmation: '' })).toEqual({
       email: 'Введите электронную почту',
       password: 'Введите пароль',
       password_confirmation: 'Повторите пароль',
