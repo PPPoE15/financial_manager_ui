@@ -32,6 +32,7 @@ export function validateName(input: string): FieldCheck<string> {
  * «Сумма накоплений»: целое число рублей от −1 000 000 000 до 1 000 000 000, может быть отрицательным
  * (долг). Пробелы (в том числе неразрывные) — разделители разрядов; минус — дефис или «−».
  */
+// TODO(FM-39): принимать как минус и короткое тире «–» (Option+- в macOS) — сейчас «–5 000» отклоняется.
 export function parseAmount(input: string): FieldCheck<number> {
   const compact = input.replace(/\s/g, '').replace('−', '-')
   if (!compact) return { error: 'Введите сумму' }

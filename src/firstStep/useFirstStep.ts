@@ -19,6 +19,7 @@ const STARTING_BALANCE_MISSING = 'FM-404201'
 const STARTING_BALANCE_EXISTS = 'FM-409201'
 
 // Сообщения бэкенда в 422 — от pydantic на английском, поэтому у поля показываем свои
+// TODO(FM-39): числа 64 и ±1 000 000 000 продублированы из validation.ts — собирать текст из констант.
 const FIELD_FORMAT_ERRORS: Record<FirstStepField, string> = {
   name: 'Проверьте имя: от 1 до 64 символов, без служебных символов',
   amount: 'Проверьте сумму: целое число от −1 000 000 000 до 1 000 000 000 ₽',
@@ -33,6 +34,7 @@ function hasCode(error: unknown, status: number, code: string): boolean {
   return data?.code === code
 }
 
+// TODO(FM-39): разбор «нет ответа / 5xx / прочее» повторяет mapAuthError из auth/errors.ts — вынести общий.
 function mapSaveError(error: unknown, field: FirstStepField): SaveError {
   if (!isAxiosError(error)) return { message: GENERIC_ERROR }
   if (!error.response) return { message: NETWORK_ERROR }
@@ -74,6 +76,8 @@ export function useFirstStep(): FirstStep {
   const message = ref<string | null>(null)
   const submitting = ref(false)
 
+  // TODO(FM-39): запрос уходит при каждом открытии главной, хотя заданный остаток уже не меняется —
+  // запоминать результат в store на время сессии.
   // NOTE(FM-39): если остаток проверить не удалось (сеть, 5xx), блок суммы не показываем — не держим
   // пользователя в обязательном окне из-за сбоя; окно появится при следующем открытии главной.
   async function isStartingBalanceMissing(): Promise<boolean> {
@@ -86,7 +90,9 @@ export function useFirstStep(): FirstStep {
   }
 
   async function check(): Promise<void> {
-    // Без загруженного пользователя (GET /me не удался) имя неизвестно — блок имени не показываем
+    // Без загруженного пользователя (GET /me не удался) имя неизвестно — блок имени не показываем.
+    // NOTE(FM-39): проверка делается один раз при открытии главной; если в этот момент /me не загрузился,
+    // имя спросят только после перезагрузки страницы.
     const nameMissing = session.user !== null && session.user.name === null
     const balanceMissing = await isStartingBalanceMissing()
     // Оба флага выставляются вместе, чтобы окно не появилось сначала с одним блоком, а потом с двумя

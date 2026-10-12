@@ -4,7 +4,10 @@ import { computed, useId } from 'vue'
 import ErrorMessage from '@/components/ui/ErrorMessage.vue'
 
 // Блок окна «Первый шаг» по макету «Приветствие»: вопрос (он же подпись поля), пояснение под ним,
-// поле и, у суммы, знак ₽ внутри поля справа
+// поле и, у суммы, знак ₽ внутри поля справа.
+// TODO(FM-39): разметка поля и связка aria-describedby повторяют BaseInput — добавить в BaseInput подсказку
+// и суффикс и переиспользовать. У поля суммы нет inputmode: на телефоне открывается текстовая клавиатура
+// (у numeric нет минуса на iOS — нужен свой вариант).
 const props = withDefaults(
   defineProps<{
     label: string
