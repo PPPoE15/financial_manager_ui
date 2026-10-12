@@ -71,7 +71,6 @@ async function fillLogin(w: VueWrapper) {
 }
 
 async function fillRegistration(w: VueWrapper) {
-  await field(w, 'Как к вам обращаться').setValue(' Артём ')
   await field(w, 'Электронная почта').setValue('name@example.com')
   await field(w, 'Пароль').setValue('s3cret-Passw0rd')
   await field(w, 'Подтвердите пароль').setValue('s3cret-Passw0rd')
@@ -232,12 +231,10 @@ describe('LoginView', () => {
       expect(w.get('h1').text()).toBe('Добро пожаловать!')
       expect(w.get('h2').text()).toBe('Создать аккаунт')
       expect(w.findAll('label').map((l) => l.text())).toEqual([
-        'Как к вам обращаться',
         'Электронная почта',
         'Пароль',
         'Подтвердите пароль',
       ])
-      expect(field(w, 'Как к вам обращаться').attributes('placeholder')).toBe('Имя')
       expect(field(w, 'Подтвердите пароль').attributes('placeholder')).toBe(
         'Введите пароль еще раз',
       )
@@ -267,7 +264,6 @@ describe('LoginView', () => {
       await flushPromises()
 
       expect(register).toHaveBeenCalledWith({
-        name: 'Артём',
         email: 'name@example.com',
         password: 's3cret-Passw0rd',
         password_confirmation: 's3cret-Passw0rd',

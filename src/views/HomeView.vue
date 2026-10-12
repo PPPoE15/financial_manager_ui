@@ -8,8 +8,9 @@ import { useSessionStore } from '@/stores/session'
 // карточки остатка, доходов и расходов появятся с экранами FM-2 и далее.
 const session = useSessionStore()
 // TODO(FM-13): имя пользователя берётся из `session.user` здесь и в AppLayout — вынести в геттер store.
+// Без имени (`name = null` до окна «Первый шаг») — «Добрый день» без запятой
 const greeting = computed(() =>
-  session.user ? `Добрый день, ${session.user.name}` : 'Добрый день',
+  session.user?.name ? `Добрый день, ${session.user.name}` : 'Добрый день',
 )
 </script>
 

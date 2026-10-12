@@ -9,8 +9,8 @@ import AuthFormLayout from '@/components/auth/AuthFormLayout.vue'
 import BaseInput from '@/components/ui/BaseInput.vue'
 import type { RegistrationRequest } from '@/types/auth'
 
+// Имени в форме нет (макет «Регистрация», узел 220:24) — его спрашивает окно «Первый шаг» после входа
 const form = reactive<RegistrationRequest>({
-  name: '',
   email: '',
   password: '',
   password_confirmation: '',
@@ -31,7 +31,7 @@ async function onSubmit(): Promise<void> {
   errors.value = validateRegistration(form)
   if (Object.keys(errors.value).length) return
 
-  const payload: RegistrationRequest = { ...form, name: form.name.trim(), email: form.email.trim() }
+  const payload: RegistrationRequest = { ...form, email: form.email.trim() }
   submitting.value = true
   try {
     try {
@@ -65,13 +65,6 @@ async function onSubmit(): Promise<void> {
     :submitting="submitting"
     @submit="onSubmit"
   >
-    <BaseInput
-      v-model="form.name"
-      label="Как к вам обращаться"
-      placeholder="Имя"
-      autocomplete="name"
-      :error="errors.name"
-    />
     <BaseInput
       v-model="form.email"
       label="Электронная почта"

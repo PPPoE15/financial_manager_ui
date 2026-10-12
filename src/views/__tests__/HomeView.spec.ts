@@ -21,6 +21,12 @@ describe('HomeView', () => {
     expect(mount(HomeView).get('h1').text()).toBe('Добрый день, Артём')
   })
 
+  it('без имени (до окна «Первый шаг») приветствует без запятой', () => {
+    useSessionStore().setUser({ uid: 'u', name: null, email: 'a@example.com' })
+
+    expect(mount(HomeView).get('h1').text()).toBe('Добрый день')
+  })
+
   it('без загруженного пользователя приветствует без имени', () => {
     expect(mount(HomeView).get('h1').text()).toBe('Добрый день')
   })

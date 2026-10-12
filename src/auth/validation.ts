@@ -5,13 +5,12 @@ export type FieldErrors<T> = Partial<Record<keyof T, string>>
 
 // Ограничения из contracts/auth.openapi.yaml; сервер проверяет их сам, здесь — чтобы не гонять заведомо
 // неверный запрос и показать понятное сообщение сразу.
-const NAME_MAX_LENGTH = 64
 const PASSWORD_MIN_LENGTH = 8
 const PASSWORD_MAX_LENGTH = 128
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
-// Длина в символах Unicode, как её считает сервер (эмодзи — один символ, а не две UTF-16-единицы)
-function length(value: string): number {
+/** Длина в символах Unicode, как её считает сервер (эмодзи — один символ, а не две UTF-16-единицы). */
+export function length(value: string): number {
   return [...value].length
 }
 
@@ -50,11 +49,6 @@ function passwordError(password: string): string | undefined {
 }
 
 export function validateRegistration(form: RegistrationRequest): FieldErrors<RegistrationRequest> {
-  const name = form.name.trim()
-  let nameError: string | undefined
-  if (!name) nameError = 'Введите, как к вам обращаться'
-  else if (length(name) > NAME_MAX_LENGTH) nameError = `Не длиннее ${NAME_MAX_LENGTH} символов`
-
   let confirmationError: string | undefined
   if (!form.password_confirmation) confirmationError = 'Повторите пароль'
   else if (form.password && form.password_confirmation !== form.password) {
@@ -62,7 +56,6 @@ export function validateRegistration(form: RegistrationRequest): FieldErrors<Reg
   }
 
   return compact<RegistrationRequest>({
-    name: nameError,
     email: emailError(form.email),
     password: passwordError(form.password),
     password_confirmation: confirmationError,
