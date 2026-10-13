@@ -4,9 +4,8 @@ export interface LoginRequest {
   password: string
 }
 
-/** Тело `POST /auth/registration`. */
+/** Тело `POST /auth/registration`; имя не передаётся — оно задаётся позже в окне «Первый шаг». */
 export interface RegistrationRequest {
-  name: string
   email: string
   password: string
   password_confirmation: string

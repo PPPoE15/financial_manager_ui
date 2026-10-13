@@ -71,7 +71,10 @@ Vue 3 + TypeScript + Vite SPA («Финансовый менеджер»), Pinia
   go to the wrapper, other attrs to `<input>`), `BaseButton` (`variant` primary/secondary, `loading`/`disabled`, `type="button"` by
   default), `ErrorMessage` (`role="alert"`, renders nothing for empty message).
 - **Auth (`src/auth/`, `src/api/auth.ts`, `src/components/auth/`)**: `api/auth.ts` — `login`
-  (`POST /auth/token`) and `register` (`POST /auth/registration`), both with `skipAuth`.
+  (`POST /auth/token`) and `register` (`POST /auth/registration`, `{email, password,
+  password_confirmation}` — no name, the mockup has no such field), both with `skipAuth`;
+  `getCurrentUser` (`GET /auth/me`) and `updateCurrentUser` (`PATCH /auth/me`). `User.name` is
+  `string | null`: `null` until the user fills in the «Первый шаг» window.
   `auth/validation.ts` — client-side checks mirroring `contracts/auth.openapi.yaml`;
   `auth/errors.ts` — `mapAuthError` turns a backend error into a form-level `message` and/or
   per-field `fields` (422 messages from pydantic are English, so field texts are our own);
@@ -81,8 +84,21 @@ Vue 3 + TypeScript + Vite SPA («Финансовый менеджер»), Pinia
 - **Views (`src/views/`)**: routed pages. `LoginView` serves both `/login` and `/register` (mode
   from the route name, tabs are `RouterLink`s) per Figma Frame 6/7; below `lg` the green panel is
   hidden and a compact logo (same SVG, recoloured via CSS mask) sits above the form. `HomeView` is
-  the «Обзор» screen: greeting «Добрый день, <name>» and the budget-structure card (other Frame 8
-  cards come with FM-2+).
+  the «Обзор» screen: greeting «Добрый день, <name>» («Добрый день» without a comma while `name` is
+  `null`), the budget-structure card (other Frame 8 cards come with FM-2+) and `FirstStepDialog`.
+- **«Первый шаг» (`src/firstStep/`, `src/api/balance.ts`, `src/components/firstStep/`)**: mandatory
+  window over the home screen per the «Приветствие» mockup (section «Новый дизайн», node `220:81`;
+  current theme colours — the new design is not applied yet). `api/balance.ts` —
+  `getStartingBalance` / `createStartingBalance` (`GET`/`POST /transaction/starting-balance`, POST
+  sends only `amount`; the server sets the date to yesterday). `useFirstStep` shows the window when
+  `user.name === null` (block «Как Вас зовут?» → `PATCH /auth/me`) and/or the starting balance GET
+  returned 404 `FM-404201` (block «Ваш текущий бюджет?» → `POST`); only the missing blocks are
+  rendered. «Приступим» sends both requests in parallel; a saved block disappears (partial success
+  leaves only the unsaved one), 409 `FM-409201` counts the balance block as done, 422 goes to the
+  field, other errors to a message in the window. If the balance check fails (network/5xx) the
+  balance block is not shown. `validation.ts` — `validateName` (1–64 chars after trim, no control
+  characters) and `parseAmount` (integer −1e9…1e9, spaces as separators, `-` or `−`). The dialog is
+  teleported to `body`, sets `inert` on `#app` while open, keeps Tab inside and ignores Escape.
 - **Budget structure (`src/budget/`, `src/api/budget.ts`, `src/components/budget/`)**:
   `getBudgetStructure(year, categoryType)` → `GET /transaction/budget-structure`.
   `useBudgetStructure` holds `year` (default current, clamped to 2000–2099) and `categoryType`

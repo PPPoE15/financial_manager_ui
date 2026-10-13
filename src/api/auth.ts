@@ -1,6 +1,6 @@
 import { http } from '@/api/client'
 import type { LoginRequest, RegistrationRequest, TokenResponse } from '@/types/auth'
-import type { User } from '@/types/user'
+import type { User, UserUpdate } from '@/types/user'
 
 // Вход и регистрация выполняются без сессии: старый токен не подставляется, а 401 означает
 // неверные данные, а не истёкшую сессию (см. `skipAuth` в `@/api/http`)
@@ -21,5 +21,11 @@ export async function register(form: RegistrationRequest): Promise<User> {
 /** `GET /auth/me` — текущий пользователь по токену сессии; 401 сбрасывает сессию (см. `@/api/client`). */
 export async function getCurrentUser(): Promise<User> {
   const { data } = await http.get<User>('/me', { api: 'auth' })
+  return data
+}
+
+/** `PATCH /auth/me` — изменение профиля (имя из окна «Первый шаг»), возвращает изменённого пользователя. */
+export async function updateCurrentUser(body: UserUpdate): Promise<User> {
+  const { data } = await http.patch<User>('/me', body, { api: 'auth' })
   return data
 }

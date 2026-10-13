@@ -4,7 +4,6 @@ import { validateLogin, validateRegistration } from '@/auth/validation'
 import type { RegistrationRequest } from '@/types/auth'
 
 const validRegistration: RegistrationRequest = {
-  name: 'Артём',
   email: 'name@example.com',
   password: 's3cret-Passw0rd',
   password_confirmation: 's3cret-Passw0rd',
@@ -41,21 +40,11 @@ describe('validateRegistration', () => {
   })
 
   it('все поля обязательны', () => {
-    expect(
-      validateRegistration({ name: ' ', email: '', password: '', password_confirmation: '' }),
-    ).toEqual({
-      name: 'Введите, как к вам обращаться',
+    expect(validateRegistration({ email: '', password: '', password_confirmation: '' })).toEqual({
       email: 'Введите электронную почту',
       password: 'Введите пароль',
       password_confirmation: 'Повторите пароль',
     })
-  })
-
-  it('имя не длиннее 64 символов', () => {
-    expect(validateRegistration({ ...validRegistration, name: 'я'.repeat(65) })).toEqual({
-      name: 'Не длиннее 64 символов',
-    })
-    expect(validateRegistration({ ...validRegistration, name: 'я'.repeat(64) })).toEqual({})
   })
 
   it('пароль от 8 до 128 символов', () => {

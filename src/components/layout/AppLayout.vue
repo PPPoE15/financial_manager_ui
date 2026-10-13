@@ -14,6 +14,8 @@ const route = useRoute()
 const session = useSessionStore()
 const signOut = useSignOut()
 
+// TODO(FM-39): пока имя не задано (`name = null` до окна «Первый шаг»), блок пользователя пуст —
+// показывать, например, email.
 const userName = computed(() => session.user?.name ?? '')
 // NOTE(FM-13): в API нет аватара — вместо фото из макета круг с первой буквой имени.
 const userInitial = computed(() => userName.value.trim().charAt(0).toUpperCase())
