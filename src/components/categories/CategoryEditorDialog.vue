@@ -12,8 +12,10 @@ import { useCategoryEditor } from '@/categories/useCategoryEditor'
 // Отклонение от макета: кнопка «Сохранить» высотой 50px (h-control, как все основные кнопки приложения),
 // а не 38px. Окно открывается поверх главной, закрывается крестиком и Escape, фокус удерживается внутри.
 // Высота (FM-44): по макету 672px, но не выше экрана за вычетом полей подложки (2 × 2rem) — при многих статьях
-// прокручиваются только колонки, заголовок с крестиком и «Сохранить» остаются на месте. Без ограничения окно
-// выше экрана центрировалось подложкой, и его верх с заголовком уходил за край, куда не прокрутить.
+// прокручиваются только колонки, заголовок с крестиком и «Сохранить» остаются на месте. На экране ниже 540px
+// колонкам так осталось бы меньше строки — там окно растёт целиком и прокручивается с подложкой. Центрирует
+// окно не подложка (items-center уводила верх высокого окна за край, куда не прокрутить), а отступы auto:
+// когда окно выше экрана, они обнуляются, и окно прокручивается от своего верха.
 const emit = defineEmits<{
   /** Создана хотя бы одна статья — таблицу «Структура бюджета» нужно перезапросить. */
   saved: []
@@ -113,14 +115,14 @@ onBeforeUnmount(() => {
 <template>
   <Teleport to="body">
     <div
-      class="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-ink/40 px-4 py-8 font-sans text-ink backdrop-blur-sm sm:items-center"
+      class="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-ink/40 px-4 py-8 font-sans text-ink backdrop-blur-sm"
     >
       <div
         ref="panel"
         role="dialog"
         aria-modal="true"
         :aria-labelledby="titleId"
-        class="relative flex max-h-[calc(100dvh-4rem)] w-full max-w-[1535px] flex-col rounded bg-surface-card px-4 pb-6 pt-8 shadow-xl sm:px-[65px] sm:pb-[27px] sm:pt-[46px] lg:min-h-[min(672px,calc(100dvh-4rem))]"
+        class="relative flex w-full max-w-[1535px] flex-col rounded bg-surface-card px-4 pb-6 pt-8 shadow-xl sm:px-[65px] sm:pb-[27px] sm:pt-[46px] sm:my-auto lg:min-h-[min(672px,calc(100dvh-4rem))] [@media(min-height:540px)]:max-h-[calc(100dvh-4rem)]"
         @keydown="onKeydown"
       >
         <button

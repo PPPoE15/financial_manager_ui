@@ -180,9 +180,16 @@ describe('CategoryEditorDialog', () => {
     const scroll = page().get('[data-testid="category-editor-scroll"]')
 
     // Выше экрана окно не растёт: иначе центрирование подложкой уводит заголовок за верхний край
+    // Ограничение — только на экране от 540px: ниже прокрутке колонок осталось бы меньше строки, и окно
+    // растёт целиком, прокручиваясь с подложкой
     expect(panel.classes()).toEqual(
-      expect.arrayContaining(['flex', 'flex-col', 'max-h-[calc(100dvh-4rem)]']),
+      expect.arrayContaining([
+        'flex',
+        'flex-col',
+        '[@media(min-height:540px)]:max-h-[calc(100dvh-4rem)]',
+      ]),
     )
+    expect(panel.classes()).not.toContain('max-h-[calc(100dvh-4rem)]')
     // relative: sr-only «план не задан» (absolute) иначе позиционируется от панели, выходит из прокрутки
     // и растягивает подложку — на телефоне она прокручивается на высоту всех строк
     expect(scroll.classes()).toEqual(
@@ -192,6 +199,16 @@ describe('CategoryEditorDialog', () => {
     expect(scroll.find('h2').exists()).toBe(false)
     expect(scroll.find('button[type="submit"]').exists()).toBe(false)
     expect(scroll.find('[data-testid="form-error"]').exists()).toBe(false)
+  })
+
+  it('окно выше экрана прокручивается с подложкой от своего верха: заголовок не уходит за край', async () => {
+    // Центрирование подложкой (items-center) уводит верх высокого окна за край, куда не прокрутить;
+    // отступы auto у панели центрируют, только пока окно помещается
+    await mountDialog()
+    const panel = page().get('[role="dialog"]')
+
+    expect(panel.classes()).toContain('sm:my-auto')
+    expect(panel.element.parentElement!.className).not.toMatch(/(^|\s)(sm:)?items-center(\s|$)/)
   })
 
   it('существующие статьи только для чтения: полей у них нет, у каждой колонки одна пустая строка', async () => {
