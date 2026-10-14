@@ -147,6 +147,7 @@ onBeforeUnmount(() => {
               title="Расходы"
               empty-text="Статей расходов пока нет"
               tone="danger"
+              :readonly="saving"
               @update="updateRow"
             />
             <CategoryColumn
@@ -154,6 +155,7 @@ onBeforeUnmount(() => {
               title="Доходы"
               empty-text="Статей доходов пока нет"
               tone="success"
+              :readonly="saving"
               @update="updateRow"
             />
           </div>

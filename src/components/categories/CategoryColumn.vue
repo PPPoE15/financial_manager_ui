@@ -15,6 +15,8 @@ defineProps<{
   emptyText: string
   /** Цвет заголовка: расходы — красный, доходы — зелёный, как в макете. */
   tone: 'danger' | 'success'
+  /** Строки для новых статей только для чтения (идёт сохранение). */
+  readonly?: boolean
 }>()
 
 defineEmits<{ update: [row: NewRow, field: NewRowField, value: string] }>()
@@ -81,6 +83,7 @@ const cell = 'flex h-[46px] min-w-0 items-center rounded-sm bg-surface px-[15px]
         v-for="row in column.rows"
         :key="row.key"
         :row="row"
+        :readonly="readonly"
         @update="(field, value) => $emit('update', row, field, value)"
       />
     </div>

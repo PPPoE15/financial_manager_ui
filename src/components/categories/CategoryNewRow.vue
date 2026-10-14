@@ -8,7 +8,9 @@ import type { NewRow, NewRowField } from '@/categories/useCategoryEditor'
 // с подсказками-плейсхолдерами; у заполненного плана справа знак ₽, как у существующих строк.
 // Подписей над полями в макете нет — имя поля для скринридера в aria-label.
 // Строка — данные окна: поле не меняется здесь, а сообщается событием `update`.
-const props = defineProps<{ row: NewRow }>()
+// readonly — на время сохранения: правка отправляемой строки потерялась бы (строка уходит в список
+// со старым значением) или получила бы ошибку, относящуюся к прежнему значению.
+const props = defineProps<{ row: NewRow; readonly?: boolean }>()
 
 const emit = defineEmits<{ update: [field: NewRowField, value: string] }>()
 
@@ -31,6 +33,7 @@ function attrs(name: NewRowField): InputHTMLAttributes {
   const invalid = Boolean(props.row.errors[name])
   return {
     value: props.row[name],
+    readonly: props.readonly,
     onInput: (event: Event) => onInput(name, event),
     'aria-invalid': invalid ? 'true' : undefined,
     'aria-describedby': messages.value.length ? errorId : undefined,

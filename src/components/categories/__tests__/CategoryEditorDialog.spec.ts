@@ -456,6 +456,25 @@ describe('CategoryEditorDialog', () => {
     expect(page().get('[role="dialog"]').element.contains(document.activeElement)).toBe(true)
   })
 
+  it('во время сохранения поля новых строк только для чтения, после ответа — снова доступны', async () => {
+    await mountDialog()
+    const col = column('Расходы')
+    await fillRow(col, 0, { name: 'Кафе' })
+    await fillRow(col, 1, { name: 'Такси' })
+    const pending = deferred<Category>()
+    create.mockImplementation((body) =>
+      body.name === 'Такси' ? pending.promise : Promise.reject(httpError(500)),
+    )
+
+    await page().get('form').trigger('submit')
+
+    const fields = () => newRows(col).flatMap((row) => row.findAll('input'))
+    expect(fields().every((field) => field.attributes('readonly') !== undefined)).toBe(true)
+    pending.resolve(category({ name: 'Такси' }))
+    await flushPromises()
+    expect(fields().some((field) => field.attributes('readonly') !== undefined)).toBe(false)
+  })
+
   it('фокус: при открытии — в окне, Tab с последнего элемента переходит на первый', async () => {
     await mountDialog()
     const dialog = page().get('[role="dialog"]')
