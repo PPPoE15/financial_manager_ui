@@ -29,6 +29,8 @@ const messages = computed(() =>
 const field =
   'h-[46px] w-full min-w-0 rounded-sm border bg-surface px-[15px] text-sm text-ink outline-none placeholder:text-ink-placeholder focus-visible:outline-2 focus-visible:outline-offset-0 focus-visible:outline-primary'
 
+// TODO(FM-42): aria-describedby всех полей строки ссылается на общий список ошибок, а текст ошибки не называет
+// поле — скринридер зачитывает ошибку плана и на названии, и на комментарии. Связывать каждое поле со своей ошибкой.
 function attrs(name: NewRowField): InputHTMLAttributes {
   const invalid = Boolean(props.row.errors[name])
   return {

@@ -42,6 +42,9 @@ function onKeydown(event: KeyboardEvent): void {
     event.preventDefault()
     // Во время сохранения окно не закрывается: родитель снимет его через v-if, и «saved» после
     // ответа уже не дойдёт — таблица «Структура бюджета» не узнает о созданных статьях
+    // TODO(FM-42): у axios-клиента нет таймаута — если сервер принял запрос и не отвечает, окно не закрыть
+    // ничем, а #app под ним inert. Лучше не блокировать закрытие, а перезапрашивать таблицу на `close`,
+    // если что-то ушло на сервер (или вынести saving/saved в карточку), либо задать таймаут запросам.
     if (!saving.value) emit('close')
     return
   }
@@ -62,6 +65,8 @@ function onKeydown(event: KeyboardEvent): void {
 
 // Приложение под окном недоступно ни мыши, ни клавиатуре, ни скринридеру; окно вынесено в body,
 // поэтому inert на #app его не задевает.
+// TODO(FM-42): inert снимается безусловно, как и в FirstStepDialog: если открыты оба окна, закрытие одного
+// открывает приложение под другим — решать в общем BaseDialog (счётчик открытых окон).
 function setAppInert(value: boolean): void {
   document.getElementById('app')?.toggleAttribute('inert', value)
 }
