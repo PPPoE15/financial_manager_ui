@@ -3,6 +3,7 @@ import { flushPromises, mount, type VueWrapper } from '@vue/test-utils'
 
 import { getBudgetStructure } from '@/api/budget'
 import BudgetStructureCard from '@/components/budget/BudgetStructureCard.vue'
+import CategoryEditorDialog from '@/components/categories/CategoryEditorDialog.vue'
 import type { BudgetStructure } from '@/types/budget'
 import { budgetStructure } from './fixtures'
 
@@ -198,5 +199,46 @@ describe('BudgetStructureCard', () => {
 
     expect(wrapper.find('[role="alert"]').exists()).toBe(false)
     expect(categoryNames(wrapper)).toEqual(['еда вне дома', 'подарки'])
+  })
+
+  describe('окно «Редактирование категорий»', () => {
+    // Само окно проверяется в CategoryEditorDialog.spec.ts; здесь — что карточка его открывает и закрывает
+    const stubs = { CategoryEditorDialog: true }
+
+    it('ссылка «Редактировать категории» открывает окно', async () => {
+      api.mockResolvedValue(budgetStructure())
+      const wrapper = mount(BudgetStructureCard, { global: { stubs } })
+      await flushPromises()
+      expect(wrapper.findComponent(CategoryEditorDialog).exists()).toBe(false)
+
+      await button(wrapper, 'Редактировать категории').trigger('click')
+
+      expect(wrapper.findComponent(CategoryEditorDialog).exists()).toBe(true)
+    })
+
+    it('после сохранения статей таблица перезапрашивается', async () => {
+      api.mockResolvedValue(budgetStructure())
+      const wrapper = mount(BudgetStructureCard, { global: { stubs } })
+      await flushPromises()
+      await button(wrapper, 'Редактировать категории').trigger('click')
+
+      wrapper.findComponent(CategoryEditorDialog).vm.$emit('saved')
+      await flushPromises()
+
+      expect(api).toHaveBeenCalledTimes(2)
+      expect(api).toHaveBeenLastCalledWith(2026, 'outcome')
+    })
+
+    it('закрытие окна убирает его', async () => {
+      api.mockResolvedValue(budgetStructure())
+      const wrapper = mount(BudgetStructureCard, { global: { stubs } })
+      await flushPromises()
+      await button(wrapper, 'Редактировать категории').trigger('click')
+
+      wrapper.findComponent(CategoryEditorDialog).vm.$emit('close')
+      await flushPromises()
+
+      expect(wrapper.findComponent(CategoryEditorDialog).exists()).toBe(false)
+    })
   })
 })
