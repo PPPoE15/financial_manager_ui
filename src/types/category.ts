@@ -18,6 +18,16 @@ export interface CategoryCreate {
   description?: string | null
 }
 
+/**
+ * Тело `PATCH /transaction/categories/{uid}` (`CategoryUpdate`): только изменённые поля.
+ * Тип статьи окно не меняет (колонки фиксированы), поэтому `category_type` здесь нет.
+ */
+export interface CategoryUpdate {
+  name?: string
+  money_plan?: number | null
+  description?: string | null
+}
+
 /** Ответ `GET /transaction/categories` (`CategoryList`). */
 export interface CategoryList {
   total: number

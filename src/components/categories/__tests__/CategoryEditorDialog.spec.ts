@@ -2,20 +2,22 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { DOMWrapper, flushPromises, mount, type VueWrapper } from '@vue/test-utils'
 import { AxiosError, AxiosHeaders, type InternalAxiosRequestConfig } from 'axios'
 
-import { createCategory, listCategories } from '@/api/categories'
+import { createCategory, listCategories, updateCategory } from '@/api/categories'
 import { NETWORK_ERROR, SERVER_ERROR } from '@/auth/errors'
 import CategoryEditorDialog from '@/components/categories/CategoryEditorDialog.vue'
 import type { TransactionType } from '@/types/budget'
-import type { Category, CategoryCreate } from '@/types/category'
+import type { Category, CategoryCreate, CategoryUpdate } from '@/types/category'
 
 vi.mock('@/api/categories', () => ({
   MAX_CATEGORIES: 100,
   listCategories: vi.fn(),
   createCategory: vi.fn(),
+  updateCategory: vi.fn(),
 }))
 
 const list = vi.mocked(listCategories)
 const create = vi.mocked(createCategory)
+const update = vi.mocked(updateCategory)
 
 let uid = 0
 function category(overrides: Partial<Category> = {}): Category {
@@ -65,6 +67,12 @@ function echo(body: CategoryCreate): Promise<Category> {
   )
 }
 
+/** Ответ PATCH: статья с применёнными изменениями (исходная — из открытого окна). */
+function patched(original: Category) {
+  return (_uid: string, body: CategoryUpdate): Promise<Category> =>
+    Promise.resolve({ ...original, ...body })
+}
+
 let wrapper: VueWrapper | undefined
 const scrollIntoView = vi.fn<(arg?: boolean | ScrollIntoViewOptions) => void>()
 
@@ -106,10 +114,21 @@ function column(title: 'Расходы' | 'Доходы') {
   return page().get(`[aria-labelledby="${heading.attributes('id')}"]`)
 }
 
+function existingRow(col: Node, index: number) {
+  const row = col.findAll('[data-testid="category-row"]')[index]
+  if (!row) throw new Error(`Нет статьи ${index}`)
+  return row
+}
+
+/** Значения полей существующих статей: название, план, комментарий (неразрывные пробелы — обычными). */
 function existingRows(col: Node): string[][] {
   return col
     .findAll('[data-testid="category-row"]')
-    .map((row) => row.findAll('[data-testid="cell"]').map((cell) => cell.text()))
+    .map((row) =>
+      row
+        .findAll<HTMLInputElement>('input')
+        .map((field) => field.element.value.replace(/\u00a0/g, ' ')),
+    )
 }
 
 function newRows(col: Node) {
@@ -120,13 +139,19 @@ function input(row: Node, label: 'Название категории' | 'Пла
   return row.get<HTMLInputElement>(`input[aria-label="${label}"]`)
 }
 
-async function fillRow(
-  col: Node,
-  index: number,
-  values: { name?: string; plan?: string; description?: string },
-) {
+type RowValues = { name?: string; plan?: string; description?: string }
+
+async function fillRow(col: Node, index: number, values: RowValues) {
   const row = newRows(col)[index]
   if (!row) throw new Error(`Нет новой строки ${index}`)
+  await fill(row, values)
+}
+
+async function editRow(col: Node, index: number, values: RowValues) {
+  await fill(existingRow(col, index), values)
+}
+
+async function fill(row: Node, values: RowValues) {
   if (values.name !== undefined) await input(row, 'Название категории').setValue(values.name)
   if (values.plan !== undefined) await input(row, 'План').setValue(values.plan)
   if (values.description !== undefined) await input(row, 'Комментарий').setValue(values.description)
@@ -174,10 +199,10 @@ describe('CategoryEditorDialog', () => {
     expect(list).toHaveBeenCalledWith('outcome')
     expect(list).toHaveBeenCalledWith('income')
     expect(existingRows(column('Расходы'))).toEqual([
-      ['Продукты', '4 990 ₽', 'Покупки в магазинах'],
-      ['ЖКХ', '11 500 ₽', ''],
+      ['Продукты', '4 990', 'Покупки в магазинах'],
+      ['ЖКХ', '11 500', ''],
     ])
-    expect(existingRows(column('Доходы'))).toEqual([['Зарплата', '200 000 ₽', '']])
+    expect(existingRows(column('Доходы'))).toEqual([['Зарплата', '200 000', '']])
   })
 
   // TODO(FM-44): тест сверяет точные классы Tailwind (раскладку jsdom не считает) — равнозначная замена, например
@@ -198,8 +223,8 @@ describe('CategoryEditorDialog', () => {
       ]),
     )
     expect(panel.classes()).not.toContain('max-h-[calc(100dvh-4rem)]')
-    // relative: sr-only «план не задан» (absolute) иначе позиционируется от панели, выходит из прокрутки
-    // и растягивает подложку — на телефоне она прокручивается на высоту всех строк
+    // relative: absolute-элементы колонок иначе позиционируются от панели, выходят из прокрутки
+    // и растягивают подложку — на телефоне она прокручивается на высоту всех строк
     expect(scroll.classes()).toEqual(
       expect.arrayContaining(['relative', 'min-h-0', 'flex-1', 'overflow-y-auto']),
     )
@@ -219,12 +244,22 @@ describe('CategoryEditorDialog', () => {
     expect(panel.element.parentElement!.className).not.toMatch(/(^|\s)(sm:)?items-center(\s|$)/)
   })
 
-  it('существующие статьи только для чтения: полей у них нет, у каждой колонки одна пустая строка', async () => {
+  it('у существующих статей — поля со значениями, пустой комментарий показывает подсказку', async () => {
+    await mountDialog()
+
+    const row = existingRow(column('Расходы'), 1)
+    expect(input(row, 'Название категории').element.value).toBe('ЖКХ')
+    expect(input(row, 'Комментарий').element.value).toBe('')
+    expect(input(row, 'Комментарий').attributes('placeholder')).toBe('Комментарий')
+    // Как в макете: у плана знак ₽ у правого края поля
+    expect(row.text()).toContain('₽')
+  })
+
+  it('у каждой колонки одна пустая строка для новой статьи', async () => {
     await mountDialog()
 
     for (const title of ['Расходы', 'Доходы'] as const) {
       const col = column(title)
-      expect(col.findAll('[data-testid="category-row"] input')).toHaveLength(0)
       const [row] = newRows(col)
       expect(newRows(col)).toHaveLength(1)
       expect(input(row!, 'Название категории').attributes('placeholder')).toBe('Название категории')
@@ -233,13 +268,13 @@ describe('CategoryEditorDialog', () => {
     }
   })
 
-  it('статья без плана — пустая ячейка плана с пояснением для скринридера', async () => {
+  it('статья без плана — пустое поле плана с подсказкой, без знака ₽', async () => {
     await mountDialog({ outcome: [category({ money_plan: null, description: null })] })
 
-    const [row] = column('Расходы').findAll('[data-testid="category-row"]')
-    const planCell = row!.findAll('[data-testid="cell"]')[1]!
-    expect(planCell.get('.sr-only').text()).toBe('план не задан')
-    expect(planCell.text()).not.toContain('₽')
+    const row = existingRow(column('Расходы'), 0)
+    expect(input(row, 'План').element.value).toBe('')
+    expect(input(row, 'План').attributes('placeholder')).toBe('План')
+    expect(row.text()).not.toContain('₽')
   })
 
   it('пустая колонка — подсказка и строка для новой статьи', async () => {
@@ -512,6 +547,189 @@ describe('CategoryEditorDialog', () => {
     await flushPromises()
   })
 
+  describe('изменение существующих статей', () => {
+    beforeEach(() => {
+      update.mockImplementation((uid, body) =>
+        Promise.resolve({ ...category({ uid }), ...body } as Category),
+      )
+    })
+
+    it('«Сохранить» отправляет PATCH только с изменёнными полями', async () => {
+      const outcome = [category(), category({ name: 'ЖКХ', money_plan: 11500, description: null })]
+      await mountDialog({ outcome })
+      await editRow(column('Расходы'), 0, { name: ' Еда ', plan: '5 000' })
+      await editRow(column('Расходы'), 1, { description: 'Квартира' })
+
+      await save()
+
+      expect(update).toHaveBeenCalledTimes(2)
+      expect(update).toHaveBeenCalledWith(outcome[0]!.uid, { name: 'Еда', money_plan: 5000 })
+      expect(update).toHaveBeenCalledWith(outcome[1]!.uid, { description: 'Квартира' })
+      expect(create).not.toHaveBeenCalled()
+    })
+
+    it('очищенные план и комментарий отправляются как null', async () => {
+      const outcome = [category()]
+      await mountDialog({ outcome })
+      await editRow(column('Расходы'), 0, { plan: '', description: '' })
+
+      await save()
+
+      expect(update).toHaveBeenCalledWith(outcome[0]!.uid, { money_plan: null, description: null })
+    })
+
+    it('строки, вернувшиеся к исходным значениям, не отправляются; без изменений окно закрывается', async () => {
+      const w = await mountDialog()
+      // План введён без разделителя разрядов — значение то же
+      await editRow(column('Расходы'), 0, { name: 'Еда', plan: '4990' })
+      await editRow(column('Расходы'), 0, { name: 'Продукты' })
+
+      await save()
+
+      expect(update).not.toHaveBeenCalled()
+      expect(create).not.toHaveBeenCalled()
+      expect(w.emitted('saved')).toBeUndefined()
+      expect(w.emitted('close')).toHaveLength(1)
+    })
+
+    it('PATCH и POST уходят параллельно; после успеха — saved и закрытие', async () => {
+      const w = await mountDialog()
+      const pendingUpdate = deferred<Category>()
+      const pendingCreate = deferred<Category>()
+      update.mockReturnValue(pendingUpdate.promise)
+      create.mockReturnValue(pendingCreate.promise)
+      await editRow(column('Расходы'), 0, { name: 'Еда' })
+      await fillRow(column('Доходы'), 0, { name: 'Бонус' })
+
+      await page().get('form').trigger('submit')
+
+      expect(update).toHaveBeenCalledTimes(1)
+      expect(create).toHaveBeenCalledTimes(1)
+      pendingUpdate.resolve(category({ name: 'Еда' }))
+      pendingCreate.resolve(category({ name: 'Бонус', category_type: 'income' }))
+      await flushPromises()
+      expect(w.emitted('saved')).toHaveLength(1)
+      expect(w.emitted('close')).toHaveLength(1)
+    })
+
+    it.each([
+      ['другой статьи', 'ЖКХ'],
+      ['новой строки', 'Кафе'],
+    ])(
+      'переименование в название %s колонки — «Такая статья уже есть» до отправки',
+      async (_, name) => {
+        const w = await mountDialog()
+        const col = column('Расходы')
+        await fillRow(col, 0, { name: 'Кафе' })
+        await editRow(col, 0, { name })
+
+        await save()
+
+        expect(update).not.toHaveBeenCalled()
+        expect(create).not.toHaveBeenCalled()
+        expect(existingRow(col, 0).text()).toContain('Такая статья уже есть')
+        expect(input(existingRow(col, 0), 'Название категории').attributes('aria-invalid')).toBe(
+          'true',
+        )
+        expect(existingRow(col, 1).text()).not.toContain('Такая статья уже есть')
+        expect(newRows(col)[0]!.text()).not.toContain('Такая статья уже есть')
+        expect(w.emitted('close')).toBeUndefined()
+      },
+    )
+
+    it('название другой колонки не дубликат', async () => {
+      await mountDialog()
+      await editRow(column('Расходы'), 0, { name: 'Зарплата' })
+
+      await save()
+
+      expect(update).toHaveBeenCalledTimes(1)
+    })
+
+    it('ошибки ввода — как у новых строк, у полей, запросы не уходят', async () => {
+      await mountDialog()
+      const col = column('Расходы')
+      await editRow(col, 0, { name: ' ', plan: '1.5' })
+
+      await save()
+
+      expect(update).not.toHaveBeenCalled()
+      const row = existingRow(col, 0)
+      expect(row.text()).toContain('Введите название')
+      expect(row.text()).toContain('Введите целое число рублей не меньше 0')
+      expect(document.activeElement).toBe(input(row, 'Название категории').element)
+    })
+
+    it.each([
+      ['409 дубликат', () => httpError(409, { code: 'FM-409101' }), 'Такая статья уже есть'],
+      [
+        '422 по полю',
+        () => httpError(422, { code: 'FM-422000', validation: [{ field: 'money_plan' }] }),
+        'Проверьте план',
+      ],
+      ['404 — статья удалена', () => httpError(404, { code: 'FM-404100' }), 'Статья удалена'],
+    ])('ошибка сервера «%s» — у строки, фокус в ней', async (_, error, text) => {
+      await mountDialog()
+      const col = column('Расходы')
+      update.mockRejectedValue(error())
+      await editRow(col, 1, { plan: '700' })
+
+      await save()
+
+      const row = existingRow(col, 1)
+      expect(row.text()).toContain(text)
+      expect(row.element.contains(document.activeElement)).toBe(true)
+      expect(page().find('[data-testid="form-error"]').exists()).toBe(false)
+    })
+
+    it.each([
+      ['нет связи', networkError, NETWORK_ERROR],
+      ['5xx', () => httpError(503), SERVER_ERROR],
+    ])('ошибка «%s» — общим сообщением окна, фокус на «Сохранить»', async (_, error, message) => {
+      await mountDialog()
+      update.mockRejectedValue(error())
+      await editRow(column('Расходы'), 0, { name: 'Еда' })
+
+      await save()
+
+      expect(page().get('[data-testid="form-error"]').text()).toBe(message)
+      expect(existingRows(column('Расходы'))[0]![0]).toBe('Еда')
+      expect(document.activeElement).toBe(page().get('button[type="submit"]').element)
+    })
+
+    it('частичный успех: сохранённые строки — значения из ответа, у несохранённой — ввод и ошибка', async () => {
+      const outcome = [category(), category({ name: 'ЖКХ', money_plan: 11500, description: null })]
+      const w = await mountDialog({ outcome })
+      const col = column('Расходы')
+      update.mockImplementation((uid, body) =>
+        uid === outcome[1]!.uid
+          ? Promise.reject(httpError(409, { code: 'FM-409101' }))
+          : // Сервер возвращает статью в своём виде: комментарий без изменений, план из тела
+            patched(outcome[0]!)(uid, { ...body, description: 'С сервера' }),
+      )
+      await editRow(col, 0, { plan: '6000' })
+      await editRow(col, 1, { name: 'Коммуналка' })
+
+      await save()
+
+      expect(existingRows(col)).toEqual([
+        ['Продукты', '6 000', 'С сервера'],
+        ['Коммуналка', '11 500', ''],
+      ])
+      expect(existingRow(col, 1).text()).toContain('Такая статья уже есть')
+      expect(w.emitted('saved')).toHaveLength(1)
+      expect(w.emitted('close')).toBeUndefined()
+
+      // Сохранённая строка теперь исходная: повторное «Сохранить» отправляет только несохранённую
+      update.mockClear()
+      update.mockImplementation(patched(outcome[1]!))
+      await save()
+      expect(update).toHaveBeenCalledTimes(1)
+      expect(update).toHaveBeenCalledWith(outcome[1]!.uid, { name: 'Коммуналка' })
+      expect(w.emitted('close')).toHaveLength(1)
+    })
+  })
+
   it('✕ и Escape закрывают окно без сохранения', async () => {
     const w = await mountDialog()
     await button('Закрыть').trigger('click')
@@ -554,7 +772,7 @@ describe('CategoryEditorDialog', () => {
     expect(page().get('[role="dialog"]').element.contains(document.activeElement)).toBe(true)
   })
 
-  it('во время сохранения поля новых строк только для чтения, после ответа — снова доступны', async () => {
+  it('во время сохранения поля всех строк только для чтения, после ответа — снова доступны', async () => {
     await mountDialog()
     const col = column('Расходы')
     await fillRow(col, 0, { name: 'Кафе' })
@@ -566,7 +784,7 @@ describe('CategoryEditorDialog', () => {
 
     await page().get('form').trigger('submit')
 
-    const fields = () => newRows(col).flatMap((row) => row.findAll('input'))
+    const fields = () => col.findAll('input')
     expect(fields().every((field) => field.attributes('readonly') !== undefined)).toBe(true)
     pending.resolve(category({ name: 'Такси' }))
     await flushPromises()

@@ -26,7 +26,7 @@ import { useCategoryEditor } from '@/categories/useCategoryEditor'
 // TODO(FM-42): подложка и `my-auto` повторяют FirstStepDialog, у которого всё ещё `items-center` — вынести в
 // общий BaseDialog.
 const emit = defineEmits<{
-  /** Создана хотя бы одна статья — таблицу «Структура бюджета» нужно перезапросить. */
+  /** Создана или изменена хотя бы одна статья — таблицу «Структура бюджета» нужно перезапросить. */
   saved: []
   close: []
 }>()
@@ -41,7 +41,8 @@ const panel = ref<HTMLElement | null>(null)
 const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null
 
 const FOCUSABLE = 'input:not([disabled]), button:not([disabled])'
-const NEW_ROW = '[data-testid="new-row"]'
+// Строки существующих статей и новых — в порядке на экране
+const ROW = '[data-testid="category-row"], [data-testid="new-row"]'
 
 // TODO(FM-42): удержание фокуса и inert на #app повторяют FirstStepDialog — вынести общий BaseDialog.
 function focusables(): HTMLElement[] {
@@ -113,11 +114,11 @@ async function onSubmit(): Promise<void> {
 // 5xx) — фокус на «Сохранить», рядом с её сообщением.
 // NOTE(FM-44): при ошибке строки и общей ошибке в одном сохранении фокус — в строку; ниже 540px сообщение у
 // «Сохранить» тогда может оказаться за нижним краем (скринридер объявит его через role="alert").
-// TODO(FM-44): строка ищется по DOM дочерних компонентов (`data-testid="new-row"`, `aria-invalid`, `role="alert"`
+// TODO(FM-44): строка ищется по DOM дочерних компонентов (`data-testid` строк, `aria-invalid`, `role="alert"`
 // из ErrorMessage) — при смене их разметки фокус тихо уйдёт на «Сохранить». Искать по состоянию
 // (`rows[].errors`/`.message`) и звать `focusError()` строки через `defineExpose`.
 function focusError(): void {
-  const rows = panel.value ? [...panel.value.querySelectorAll<HTMLElement>(NEW_ROW)] : []
+  const rows = panel.value ? [...panel.value.querySelectorAll<HTMLElement>(ROW)] : []
   const row = rows.find((item) => item.querySelector('[aria-invalid="true"], [role="alert"]'))
   if (row) {
     const field =
@@ -190,10 +191,8 @@ onBeforeUnmount(() => {
           @submit.prevent="onSubmit"
         >
           <!-- Отступ 4px внутри прокрутки (и такой же отрицательный снаружи): иначе overflow обрезает рамку
-               фокуса у полей по краям. relative: иначе sr-only подписи (absolute) позиционируются от панели,
-               выходят из прокрутки и растягивают подложку.
-               TODO(FM-44): absolute-подпись лежит в ячейке CategoryColumn — надёжнее `relative` в классе `cell`
-               колонки, тогда окну не нужно знать разметку дочернего компонента. -->
+               фокуса у полей по краям. relative: иначе absolute-элементы колонок (sr-only подписи, знак ₽ в поле
+               плана держит свой relative) позиционируются от панели, выходят из прокрутки и растягивают подложку. -->
           <div
             data-testid="category-editor-scroll"
             class="relative -m-1 grid min-h-0 flex-1 content-start gap-8 overflow-y-auto p-1 lg:grid-cols-2 lg:gap-[65px]"

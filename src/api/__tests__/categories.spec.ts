@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 
-import { createCategory, listCategories } from '@/api/categories'
+import { createCategory, listCategories, updateCategory } from '@/api/categories'
 import { http } from '@/api/client'
 import type { Category } from '@/types/category'
 
@@ -30,5 +30,14 @@ describe('API статей', () => {
     await expect(createCategory(body)).resolves.toEqual(category)
 
     expect(post).toHaveBeenCalledWith('/categories', body)
+  })
+
+  it('updateCategory отправляет PATCH /categories/{uid} только с переданными полями и возвращает статью', async () => {
+    const patch = vi.spyOn(http, 'patch').mockResolvedValue({ data: category })
+    const body = { money_plan: null, description: 'Новый комментарий' }
+
+    await expect(updateCategory('uid-1', body)).resolves.toEqual(category)
+
+    expect(patch).toHaveBeenCalledWith('/categories/uid-1', body)
   })
 })
