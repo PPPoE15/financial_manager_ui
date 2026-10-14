@@ -27,12 +27,13 @@ async function mountSignedIn() {
 
 // Экран входа подгружается отдельным чанком — переход завершается не за один flushPromises
 async function signOut(w: VueWrapper) {
+  await w.get('[aria-controls="profile-menu"]').trigger('click')
   await logoutButton(w).trigger('click')
   await vi.waitFor(() => expect(router.currentRoute.value.name).toBe(LOGIN_ROUTE))
 }
 
 function logoutButton(w: VueWrapper) {
-  const button = w.findAll('button').find((b) => b.text() === 'Выход')
+  const button = w.findAll('button').find((b) => b.text() === 'Выйти')
   if (!button) throw new Error('Нет кнопки «Выход»')
   return button
 }
@@ -53,7 +54,7 @@ describe('AppLayout (защищённая оболочка)', () => {
     const w = await mountSignedIn()
 
     expect(w.get('[data-testid="current-user"]').text()).toContain('Артём')
-    expect(w.get('[data-testid="user-avatar"]').text()).toBe('А')
+    expect(w.find('[data-testid="user-avatar"] svg').exists()).toBe(true)
   })
 
   it('пункт меню «Обзор» ведёт на главную и отмечен как текущий', async () => {
@@ -67,6 +68,7 @@ describe('AppLayout (защищённая оболочка)', () => {
 
   it('кнопка «Выход» — обычная кнопка, доступная с клавиатуры', async () => {
     const w = await mountSignedIn()
+    await w.get('[aria-controls="profile-menu"]').trigger('click')
     const button = logoutButton(w)
 
     expect(button.element.tagName).toBe('BUTTON')
@@ -74,6 +76,58 @@ describe('AppLayout (защищённая оболочка)', () => {
     expect(button.attributes('tabindex')).toBeUndefined()
     ;(button.element as HTMLButtonElement).focus()
     expect(document.activeElement).toBe(button.element)
+  })
+
+  it('без имени показывает понятную подпись профиля и нейтральный аватар', async () => {
+    vi.mocked(getCurrentUser).mockResolvedValue({ ...user, name: null })
+    const w = await mountSignedIn()
+    expect(w.get('[data-testid="current-user"]').text()).toContain('Профиль')
+    expect(w.find('[data-testid="user-avatar"] svg').exists()).toBe(true)
+  })
+
+  it('открывает меню стрелкой, Escape закрывает и возвращает фокус', async () => {
+    const w = await mountSignedIn()
+    const trigger = w.get('[aria-controls="profile-menu"]')
+    expect(trigger.attributes('aria-expanded')).toBe('false')
+    await trigger.trigger('keydown', { key: 'ArrowDown' })
+    expect(trigger.attributes('aria-expanded')).toBe('true')
+    expect(document.activeElement).toBe(logoutButton(w).element)
+    await logoutButton(w).trigger('keydown', { key: 'Escape' })
+    expect(w.find('#profile-menu').exists()).toBe(false)
+    expect(document.activeElement).toBe(trigger.element)
+  })
+
+  it('закрывает меню при клике снаружи и возвращает фокус', async () => {
+    const w = await mountSignedIn()
+    const trigger = w.get('[aria-controls="profile-menu"]')
+    await trigger.trigger('click')
+    await w.get('h1').trigger('pointerdown')
+    expect(w.find('#profile-menu').exists()).toBe(false)
+    expect(document.activeElement).toBe(trigger.element)
+  })
+
+  it('закрывает меню при уходе фокуса, не перехватывая Tab', async () => {
+    const w = await mountSignedIn()
+    await w.get('[aria-controls="profile-menu"]').trigger('click')
+    const link = w.get('nav a')
+    ;(link.element as HTMLElement).focus()
+    await flushPromises()
+    expect(w.find('#profile-menu').exists()).toBe(false)
+    expect(document.activeElement).toBe(link.element)
+  })
+
+  it('навигация к категориям открывает существующий блок', async () => {
+    const w = await mountSignedIn()
+    const link = w.findAll('nav a').find((a) => a.text() === 'Мои категории')!
+    expect(link.attributes('href')).toBe('/#categories')
+    await link.trigger('click')
+    await flushPromises()
+    expect(router.currentRoute.value.hash).toBe('#categories')
+    expect(link.attributes('aria-current')).toBe('location')
+    expect(w.get('nav a').attributes('aria-current')).toBe('false')
+    expect(document.activeElement?.id).toBe('categories')
+    expect(w.text()).not.toContain('Импорт CSV')
+    expect(w.text()).not.toContain('Новая операция')
   })
 
   it('«Выход» очищает сессию и ведёт на экран входа', async () => {

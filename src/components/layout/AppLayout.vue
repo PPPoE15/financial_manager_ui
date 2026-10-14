@@ -1,95 +1,147 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { RouterLink, RouterView, useRoute } from 'vue-router'
 
-import logoUrl from '@/assets/logo.svg'
+import logoUrl from '@/assets/new-design/logo.svg'
 import { useSignOut } from '@/auth/useSignOut'
 import { HOME_ROUTE } from '@/router/names'
 import { useSessionStore } from '@/stores/session'
 
-// Каркас защищённых экранов по макету Figma Frame 8 «Главная» (узел 116:64): боковая панель с логотипом,
-// меню и блоком пользователя с кнопкой «Выход». Узкого макета нет — ниже lg панель становится верхней
-// полосой (логотип, пользователь, «Выход»), меню скрыто (согласованное отклонение, FM-13).
 const route = useRoute()
 const session = useSessionStore()
 const signOut = useSignOut()
+const userName = computed(() => session.user?.name?.trim() || 'Профиль')
+const profile = ref<HTMLElement>()
+const trigger = ref<HTMLButtonElement>()
+const logout = ref<HTMLButtonElement>()
+const open = ref(false)
+const focusStyle =
+  'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus'
+const menu = [
+  { label: 'Обзор', hash: '' },
+  { label: 'Мои категории', hash: '#categories' },
+]
 
-// TODO(FM-39): пока имя не задано (`name = null` до окна «Первый шаг»), блок пользователя пуст —
-// показывать, например, email.
-const userName = computed(() => session.user?.name ?? '')
-// NOTE(FM-13): в API нет аватара — вместо фото из макета круг с первой буквой имени.
-const userInitial = computed(() => userName.value.trim().charAt(0).toUpperCase())
-
-// TODO(FM-2): добавить пункты «Мои категории», «Новая операция», «Настройки» вместе с их экранами.
-// TODO(FM-2): активный пункт сейчас — точное совпадение имени маршрута; с вложенными экранами раздела
-// перейти на состояние RouterLink (`isActive`/`isExactActive`), иначе подсветка пропадёт.
-const menu = [{ route: HOME_ROUTE, label: 'Обзор' }] as const
+async function openProfile() {
+  open.value = true
+  await nextTick()
+  logout.value?.focus()
+}
+function closeProfile(restoreFocus = true) {
+  open.value = false
+  if (restoreFocus) trigger.value?.focus()
+}
+function outside(event: Event) {
+  if (open.value && event.target instanceof Node && !profile.value?.contains(event.target)) {
+    closeProfile(event.type === 'pointerdown')
+  }
+}
+async function focusCategories() {
+  if (route.hash !== '#categories') return
+  await nextTick()
+  const target = document.getElementById('categories')
+  target?.focus({ preventScroll: true })
+  target?.scrollIntoView?.({ block: 'start' })
+}
+watch(() => route.hash, focusCategories, { flush: 'post' })
+onMounted(() => {
+  void focusCategories()
+  document.addEventListener('pointerdown', outside)
+  document.addEventListener('focusin', outside)
+})
+onBeforeUnmount(() => {
+  document.removeEventListener('pointerdown', outside)
+  document.removeEventListener('focusin', outside)
+})
 </script>
 
 <template>
-  <div class="min-h-screen bg-surface font-sans text-ink lg:flex">
+  <div
+    class="relative min-h-screen bg-surface bg-landscape bg-cover bg-fixed bg-center font-sans text-ink lg:flex"
+  >
+    <div aria-hidden="true" class="pointer-events-none absolute inset-0 bg-surface/80"></div>
+    <!-- FM-57: узкая компоновка согласована отдельно; desktop — Figma 230:422 / 237:1116. -->
     <aside
-      class="flex items-center gap-3 bg-primary px-4 py-3 text-ink-inverse lg:sticky lg:top-0 lg:h-screen lg:w-[278px] lg:shrink-0 lg:flex-col lg:items-stretch lg:gap-0 lg:px-[19px] lg:pb-[14px] lg:pt-[21px]"
+      class="relative bg-surface-card/70 px-4 pb-3 pt-4 lg:sticky lg:top-0 lg:h-screen lg:w-[180px] lg:shrink-0 lg:px-3"
     >
-      <div class="flex shrink-0 items-start gap-[14.85px] lg:pl-[7px]">
-        <!-- Тот же SVG, что на экране входа, в масштабе макета: рамка 27.34×32.4, рисунок шире рамки -->
-        <div class="relative h-[32.4px] w-[27.34px] shrink-0">
-          <img
-            :src="logoUrl"
-            alt=""
-            width="35"
-            height="36"
-            class="absolute -left-[4.05px] top-0 h-[36.45px] w-[35.44px] max-w-none"
-          />
-        </div>
-        <p class="mt-[1.7px] font-brand text-[13.5px] font-bold leading-[18px]">
-          Финансовый<br />менеджер
-        </p>
-      </div>
-
-      <nav aria-label="Основное меню" class="hidden lg:mt-[121px] lg:block">
+      <img
+        :src="logoUrl"
+        alt="Финансовый менеджер"
+        class="h-9 w-[126px] object-contain object-left"
+      />
+      <nav aria-label="Основное меню" class="mt-7 flex gap-2 lg:mt-12 lg:flex-col lg:gap-2">
         <RouterLink
           v-for="item in menu"
-          :key="item.route"
-          :to="{ name: item.route }"
-          class="flex h-[39px] items-center rounded-md pl-[44px] text-base focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sidebar-accent"
-          :class="
-            route.name === item.route
-              ? 'bg-primary-muted font-extrabold text-ink-inverse'
-              : 'font-medium text-sidebar-text hover:text-ink-inverse'
-          "
+          :key="item.label"
+          :to="{ name: HOME_ROUTE, hash: item.hash }"
+          :aria-current="route.hash === item.hash ? (item.hash ? 'location' : 'page') : 'false'"
+          class="flex min-h-11 items-center rounded px-3 text-sm lg:px-6"
+          :class="[
+            focusStyle,
+            route.hash === item.hash
+              ? 'bg-action font-bold text-action-foreground'
+              : 'text-ink-secondary hover:bg-surface-muted',
+          ]"
         >
           {{ item.label }}
         </RouterLink>
       </nav>
-
-      <div
-        class="ml-auto flex min-w-0 items-center gap-3 lg:ml-0 lg:mt-auto lg:flex-col lg:items-stretch lg:gap-[19px]"
-      >
-        <div data-testid="current-user" class="flex min-w-0 items-center gap-[11px] lg:pl-[7px]">
-          <span
-            data-testid="user-avatar"
-            aria-hidden="true"
-            class="flex size-[35px] shrink-0 items-center justify-center rounded-full border border-ink-inverse bg-primary-muted font-brand text-base font-extrabold tracking-normal"
-            >{{ userInitial }}</span
-          >
-          <span
-            class="hidden truncate font-brand text-base font-extrabold tracking-normal sm:block"
-            >{{ userName }}</span
-          >
-        </div>
-        <button
-          type="button"
-          class="h-[39px] shrink-0 rounded bg-primary-dark px-4 text-base font-bold tracking-normal text-sidebar-accent transition-colors hover:text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sidebar-accent"
-          @click="signOut"
-        >
-          Выход
-        </button>
-      </div>
+      <!-- NOTE(FM-57): новая операция, CSV и настройки скрыты до появления рабочих сценариев. -->
     </aside>
 
-    <main class="min-w-0 flex-1">
-      <RouterView />
-    </main>
+    <div
+      ref="profile"
+      class="absolute right-4 top-3 z-20 max-w-[calc(100%-160px)] lg:right-6 lg:top-4 lg:max-w-[260px]"
+      @keydown.esc.stop.prevent="closeProfile()"
+    >
+      <button
+        ref="trigger"
+        type="button"
+        data-testid="current-user"
+        aria-controls="profile-menu"
+        :aria-expanded="open"
+        :aria-label="`Меню профиля: ${userName}`"
+        class="flex min-h-11 w-full items-center gap-2 rounded px-2 text-sm font-bold"
+        :class="[focusStyle, open ? 'bg-surface-card' : 'bg-surface-card/60 hover:bg-surface-card']"
+        @click="open ? closeProfile() : openProfile()"
+        @keydown.down.prevent="openProfile()"
+      >
+        <!-- API не предоставляет аватар: нейтральный силуэт не зависит от наличия имени. -->
+        <span
+          data-testid="user-avatar"
+          aria-hidden="true"
+          class="flex size-8 shrink-0 items-center justify-center rounded-full bg-surface-muted text-ink-secondary"
+        >
+          <svg
+            viewBox="0 0 24 24"
+            class="size-6"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.5"
+          >
+            <circle cx="12" cy="8" r="3" />
+            <path d="M5 21v-3a7 7 0 0 1 14 0v3" />
+          </svg>
+        </span>
+        <span class="min-w-0 truncate">{{ userName }}</span>
+        <span aria-hidden="true" class="shrink-0">{{ open ? '⌃' : '⌄' }}</span>
+      </button>
+      <div
+        v-if="open"
+        id="profile-menu"
+        class="absolute right-0 w-full min-w-36 rounded bg-surface-card p-2 shadow-panel"
+      >
+        <button
+          ref="logout"
+          type="button"
+          class="min-h-11 w-full rounded px-3 text-left text-sm hover:bg-surface-muted"
+          :class="focusStyle"
+          @click="signOut"
+        >
+          Выйти
+        </button>
+      </div>
+    </div>
+    <main class="relative min-w-0 flex-1"><RouterView /></main>
   </div>
 </template>
