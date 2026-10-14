@@ -105,8 +105,11 @@ Vue 3 + TypeScript + Vite SPA («Финансовый менеджер»), Pinia
   (default `outcome`), refetches on change and drops responses/errors of superseded requests.
   `BudgetStructureCard` (header, «Расходы / Доходы» toggle, year arrows, loading / error with
   «Повторить» / empty states — none of these are in the mockup, agreed in FM-28) wraps
-  `BudgetStructureTable`: horizontally scrolled inside the card, «Категория» sticky; column widths
-  in `columns.ts`. `null` amounts render as a pale «—» with an sr-only reason (план не задан /
+  `BudgetStructureTable`: scrolled inside the card, 250–500px tall (half / full mockup height, FM-43):
+  months scroll horizontally under the pinned «Категория» (always) and «План» / «Среднее» (768–1023px
+  and from 1140px, where months keep more than one column; breakpoints, widths and z-index layers in `columns.ts`),
+  articles scroll vertically under the bold «Сумма» row stuck to the bottom. Category names over 20
+  characters are cut with «…» (full name in `title` and sr-only). `null` amounts render as a pale «—» with an sr-only reason (план не задан /
   нет завершённых месяцев / месяц ещё не наступил), `0` as «0 ₽». The plan/fact colouring from the
   mockup is not implemented yet (TODO in the table).
 - **Categories (`src/categories/`, `src/api/categories.ts`, `src/components/categories/`)**: window
