@@ -10,7 +10,7 @@ export default {
           DEFAULT: '#E5EAFF', light: '#FFFFFF', dark: '#1E2532',
           muted: '#CBD5E8', soft: '#2F3C53',
         },
-        surface: { DEFAULT: '#4A5C7A', card: '#1E2532', muted: '#2F3C53' },
+        surface: { DEFAULT: '#4A5C7A', brand: '#2A3B53', card: '#1E2532', muted: '#2F3C53' },
         ink: {
           DEFAULT: '#FFFFFF', secondary: '#E5EAFF', muted: '#CBD5E8',
           placeholder: '#CBD5E8', inverse: '#1E2532',

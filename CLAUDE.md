@@ -82,8 +82,9 @@ Vue 3 + TypeScript + Vite SPA («Финансовый менеджер»), Pinia
   `AuthFormLayout` (form-level error above the submit button, `novalidate`, button `loading` while
   the request is in flight — repeated submits are ignored). Registration signs in right after.
 - **Views (`src/views/`)**: routed pages. `LoginView` serves both `/login` and `/register` (mode
-  from the route name, tabs are `RouterLink`s) per Figma Frame 6/7; below `lg` the green panel is
-  hidden and a compact logo (same SVG, recoloured via CSS mask) sits above the form. `HomeView` is
+  from the route name, tabs are `RouterLink`s) per «Новый дизайн», frames 214:518 / 220:24 (FM-56).
+  Desktop: landscape/brand panel on the left, 495px form on the right; below `lg` a compact logo
+  replaces the panel. Layout references, adaptations and screenshots: `docs/auth-design.md`. `HomeView` is
   the «Обзор» screen: greeting «Добрый день, <name>» («Добрый день» without a comma while `name` is
   `null`), the budget-structure card (other Frame 8 cards come with FM-2+) and `FirstStepDialog`.
 - **«Первый шаг» (`src/firstStep/`, `src/api/balance.ts`, `src/components/firstStep/`)**: mandatory
