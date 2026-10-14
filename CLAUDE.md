@@ -115,23 +115,29 @@ Vue 3 + TypeScript + Vite SPA («Финансовый менеджер»), Pinia
 - **Categories (`src/categories/`, `src/api/categories.ts`, `src/components/categories/`)**: window
   «Редактирование категорий» per the mockup (section «Новый дизайн», frame `234:734`, window `234:954`;
   current theme colours), opened by «Редактировать категории» in `BudgetStructureCard`, which reloads the
-  table on `saved` (at least one article created or changed). `api/categories.ts` — `listCategories(type)`
+  table on `saved` (at least one category created or changed). `api/categories.ts` — `listCategories(type)`
   (`GET /transaction/categories`, limit 100 = the per-user limit), `createCategory` (`POST`) and
   `updateCategory(uid, body)` (`PATCH`, only the changed fields). `useCategoryEditor` holds both columns:
   existing categories (`CategoryRow`: editable fields plus the saved `category`; the plan is shown grouped,
   «4 990») and rows for new ones — a new empty row appears as soon as the last one is touched. Both kinds
   render as `CategoryRow.vue` (three inputs, `data-testid` `category-row` / `new-row`); the category type is
   never changed (columns are fixed). «Сохранить» validates (`categories/validation.ts`, same rules as the
-  contract; a name already taken in the column — by a category keeping its name (even with a changed
-  plan/comment), a new row, then a renamed category —
-  is «Такая статья уже есть» on the later claimant; a name swap A ↔ B is refused — it can't pass the server's
-  unique name in one save), then sends in parallel one `PATCH` per changed category (a request for a name
-  that another rename frees waits for that `PATCH`)
-  (rows whose values match the saved ones are skipped; cleared plan/comment → `null`) and one `POST` per
-  filled new row: saved categories take the server's values, created rows move into the list, failed rows
-  keep their input and error (`FM-409101` duplicate, `FM-409103` limit, 404 «статья удалена», 422 by field),
-  network/5xx go to a window message; the window closes only when every row was saved, with nothing to save
-  it closes without requests. Rows are window data: `CategoryRow` emits `update`, the dialog writes it.
+  contract; a name already taken in the column is «Такая статья уже есть» on the later claimant — first
+  categories keeping their name (even with a changed plan/comment), then new rows, then renamed categories;
+  a name swap A ↔ B is refused, the server's unique name can't pass it in one save). Then it sends in
+  parallel one `PATCH` per changed category (rows matching the saved values are skipped; cleared
+  plan/comment → `null`) and one `POST` per filled new row. A request for a name that another rename in the
+  same save frees waits for that `PATCH`: on its 409/422 the waiting row gets «Такая статья уже есть», on
+  network/5xx it is not sent (window message only), on 404 (category gone, name free) it is sent. Saved
+  categories take the server's values, created rows move into the list, failed rows keep their input and
+  error (`FM-409101` duplicate, `FM-409103` limit, 404 «статья удалена», 422 by field), network/5xx go to a
+  window message; the window closes only when every row was saved, with nothing to save it closes without
+  requests. Rows are window data: `CategoryRow` emits `update`, the dialog writes it. Height (FM-44): from
+  540px of viewport height the window is capped at the viewport (mockup 672px as the minimum when it fits)
+  and only the columns scroll between the fixed header and «Сохранить»; below 540px it grows and scrolls
+  with the backdrop. It is centred with `my-auto`, not `items-center`, so a tall window keeps its top
+  reachable. After a failed save focus goes to the first row with an error (existing or new; its invalid
+  field, or first field for a row-level error) scrolled into view, or to «Сохранить» for a general error.
   Tests mount the dialog with a real Teleport (the teleport stub re-creates the window markup on updates,
   detaching elements found earlier).
 - **Money (`src/utils/money.ts`)**: `formatMoney(value)` — app-wide ₽ formatter for integer roubles:
