@@ -20,7 +20,8 @@ const greeting = computed(() =>
     </h1>
     <!-- FM-50 добавит карточки доходов/расходов в левую колонку. Пока реальные данные есть
          только у категорий; суммы, график и добавление виджета не имитируются. -->
-    <div class="mt-6 grid min-w-0 gap-4 xl:grid-cols-2">
+    <!-- NOTE(FM-57): минимум 620px оставляет целый месяц рядом с 453px закреплённых колонок. -->
+    <div class="mt-6 grid min-w-0 gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(620px,1fr)]">
       <div
         id="categories"
         tabindex="-1"
