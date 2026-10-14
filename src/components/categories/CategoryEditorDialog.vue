@@ -20,6 +20,9 @@ import { useCategoryEditor } from '@/categories/useCategoryEditor'
 // max-h и min-h, и окно снова вырастет выше экрана. Сначала значение с `vh`, затем `supports-[height:100dvh]:`.
 // TODO(FM-44): минимальная высота 672px перешла с формы на панель — «Загрузка…» и ошибка загрузки теперь у
 // верхнего края высокой панели; растянуть их блоки (`flex-1 justify-center`).
+// TODO(FM-44): порог 540px — по высоте вьюпорта: браузер, который при экранной клавиатуре уменьшает layout
+// viewport (`interactive-widget=resizes-content`), будет переключать раскладку при фокусе в поле. Chrome Android
+// ≥108 и iOS Safari по умолчанию так не делают; проверить на устройстве.
 // TODO(FM-42): подложка и `my-auto` повторяют FirstStepDialog, у которого всё ещё `items-center` — вынести в
 // общий BaseDialog.
 const emit = defineEmits<{
@@ -38,6 +41,7 @@ const panel = ref<HTMLElement | null>(null)
 const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null
 
 const FOCUSABLE = 'input:not([disabled]), button:not([disabled])'
+const NEW_ROW = '[data-testid="new-row"]'
 
 // TODO(FM-42): удержание фокуса и inert на #app повторяют FirstStepDialog — вынести общий BaseDialog.
 function focusables(): HTMLElement[] {
@@ -96,12 +100,30 @@ async function onSubmit(): Promise<void> {
     return
   }
   // Окно остаётся открытым: строка с фокусом могла сохраниться и уйти из DOM, а кнопка на время запроса
-  // становилась disabled — без фокуса внутри панели не работают Escape и удержание Tab. Фокус — в первое поле
-  // с ошибкой (FM-44): при многих статьях оно может быть вне видимой части колонок, и браузер докрутит к нему;
-  // если ошибка не у поля (лимит статей, сеть) — в первый элемент окна.
+  // становилась disabled — без фокуса внутри панели не работают Escape и удержание Tab.
   await nextTick()
-  const invalid = panel.value?.querySelector<HTMLElement>('[aria-invalid="true"]')
-  if (invalid) invalid.focus()
+  // Повторное нажатие во время сохранения: save() сразу вернул null, фокус не трогаем
+  if (!saving.value) focusError()
+}
+
+// Фокус после неудачного «Сохранить» (FM-44): при многих статьях строка с ошибкой может быть вне видимой части
+// колонок, а на низком экране фокус на крестике уводит прокрутку к верху, прочь от сообщения у «Сохранить».
+// Ошибка у строки — фокус в её поле с ошибкой (или в первое, если ошибка строки целиком, как лимит), и строка
+// с текстом ошибки докручивается в видимую часть: focus() не прокручивает уже видимое поле. Общая ошибка (сеть,
+// 5xx) — фокус на «Сохранить», рядом с её сообщением.
+function focusError(): void {
+  const rows = panel.value ? [...panel.value.querySelectorAll<HTMLElement>(NEW_ROW)] : []
+  const row = rows.find((item) => item.querySelector('[aria-invalid="true"], [role="alert"]'))
+  if (row) {
+    const field =
+      row.querySelector<HTMLElement>('[aria-invalid="true"]') ??
+      row.querySelector<HTMLElement>('input')
+    field?.focus()
+    row.scrollIntoView({ block: 'nearest' })
+    return
+  }
+  const submit = panel.value?.querySelector<HTMLElement>('button[type="submit"]')
+  if (submit) submit.focus()
   else keepFocusInside()
 }
 

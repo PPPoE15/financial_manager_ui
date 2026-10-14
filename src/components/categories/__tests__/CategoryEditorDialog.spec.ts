@@ -66,6 +66,7 @@ function echo(body: CategoryCreate): Promise<Category> {
 }
 
 let wrapper: VueWrapper | undefined
+const scrollIntoView = vi.fn<(arg?: boolean | ScrollIntoViewOptions) => void>()
 
 // Окно вынесено в body настоящим Teleport: заглушка teleport пересоздаёт разметку окна при обновлениях,
 // и найденные до сохранения элементы отрываются от документа. Поэтому всё ищется в document.body.
@@ -147,6 +148,9 @@ async function save() {
 describe('CategoryEditorDialog', () => {
   beforeEach(() => {
     create.mockImplementation(echo)
+    // В jsdom нет scrollIntoView
+    Element.prototype.scrollIntoView = scrollIntoView
+    scrollIntoView.mockClear()
   })
 
   afterEach(() => {
@@ -383,7 +387,8 @@ describe('CategoryEditorDialog', () => {
     expect(document.activeElement).toBe(input(row, 'План').element)
   })
 
-  it('ошибка сервера в строке: фокус — в её поле', async () => {
+  it('ошибка сервера в строке: фокус — в её поле, строка с текстом ошибки докручена в видимую часть', async () => {
+    // focus() не прокручивает уже видимое поле, а текст ошибки под ним может остаться за краем прокрутки
     await mountDialog()
     create.mockRejectedValueOnce(httpError(409, { code: 'FM-409101' }))
     await fillRow(column('Доходы'), 0, { name: 'Премия' })
@@ -392,6 +397,35 @@ describe('CategoryEditorDialog', () => {
 
     const row = newRows(column('Доходы'))[0]!
     expect(document.activeElement).toBe(input(row, 'Название категории').element)
+    expect(scrollIntoView.mock.contexts).toEqual([row.element])
+    expect(scrollIntoView).toHaveBeenCalledWith({ block: 'nearest' })
+  })
+
+  it('ошибка строки без поля (лимит статей): фокус — в её первое поле, строка докручена', async () => {
+    await mountDialog()
+    await fillRow(column('Расходы'), 0, { name: 'Кафе' })
+    await fillRow(column('Доходы'), 0, { name: 'Бонус' })
+    create.mockImplementation((body) =>
+      body.name === 'Бонус' ? Promise.reject(httpError(409, { code: 'FM-409103' })) : echo(body),
+    )
+
+    await save()
+
+    const row = newRows(column('Доходы'))[0]!
+    expect(row.text()).toContain('Достигнут лимит в 100 статей')
+    expect(document.activeElement).toBe(input(row, 'Название категории').element)
+    expect(scrollIntoView.mock.contexts).toEqual([row.element])
+  })
+
+  it('общая ошибка (нет связи): фокус — на «Сохранить», рядом с сообщением, а не на крестике вверху', async () => {
+    await mountDialog()
+    await fillRow(column('Расходы'), 0, { name: 'Кафе' })
+    create.mockRejectedValue(networkError())
+
+    await save()
+
+    expect(page().get('[data-testid="form-error"]').text()).toBe(NETWORK_ERROR)
+    expect(document.activeElement).toBe(page().get('button[type="submit"]').element)
   })
 
   it('одинаковые новые строки в колонке — ошибка у второй', async () => {
