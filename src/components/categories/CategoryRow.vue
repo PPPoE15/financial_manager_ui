@@ -65,6 +65,8 @@ function attrs(name: RowField): InputHTMLAttributes {
           :class="row.plan && 'pr-9'"
           v-bind="attrs('plan')"
         />
+        <!-- TODO(FM-46): знак ₽ — у любого непустого ввода, в том числе неверного («abc ₽»), как было с FM-42;
+             показывать его только у числа (parsePlan без ошибки). -->
         <span
           v-if="row.plan"
           aria-hidden="true"
