@@ -153,10 +153,11 @@ Vue 3 + TypeScript + Vite SPA («Финансовый менеджер»), Pinia
 
 Layout comes from the Figma file `FAPPJ3LrAUEY8indrAbfnV`, section «Финансовый менеджер. Разработка»
 (node `136:10`). The Tailwind theme (`tailwind.config.js`) carries its tokens — colors (`primary`,
-`surface`, `ink`, `sidebar`, `success`/`warning`/`danger`), fonts (`font-sans` = Onest,
-`font-brand` = Manrope, self-hosted via `@fontsource`), font sizes with the mockup's letter-spacing,
-radii (`rounded` = 10px, `rounded-md` = 8px, `rounded-sm` = 5px), `h-control` = 50px. Use these
-tokens and Tailwind utilities, not hardcoded hex values or scoped CSS.
+`surface`, `ink`, `sidebar`, `success`/`warning`/`danger`), fonts (`font-sans` = Inter,
+`font-brand` = Involve Medium, self-hosted), font sizes with the mockup's letter-spacing,
+radii (`rounded` = 3.75px, `rounded-md` = 8px, `rounded-sm` = 3.75px), `h-control` = 37.5px. Use these
+tokens and Tailwind utilities, not hardcoded hex values or scoped CSS. FM-55 sources and
+state decisions are in `docs/design-theme.md`; the local component preview is `/dev/theme-preview.html`.
 
 ## UI language
 

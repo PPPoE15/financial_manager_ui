@@ -80,7 +80,7 @@ const menu = [{ route: HOME_ROUTE, label: 'Обзор' }] as const
         </div>
         <button
           type="button"
-          class="h-[39px] shrink-0 rounded bg-primary-dark px-4 text-base font-bold tracking-normal text-sidebar-accent transition-colors hover:text-ink-inverse focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sidebar-accent"
+          class="h-[39px] shrink-0 rounded bg-primary-dark px-4 text-base font-bold tracking-normal text-sidebar-accent transition-colors hover:text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sidebar-accent"
           @click="signOut"
         >
           Выход
