@@ -1,6 +1,11 @@
 <script setup lang="ts">
 import BudgetStructureLine from '@/components/budget/BudgetStructureLine.vue'
-import { COLUMN_CLASS, MONTH_NAMES, monthColumnClass, PINNED_Z } from '@/components/budget/columns'
+import {
+  COLUMN_CLASS,
+  MONTH_NAMES,
+  LAYER_CLASS,
+  monthColumnClass,
+} from '@/components/budget/columns'
 import type { BudgetStructure } from '@/types/budget'
 
 // Таблица «Структура бюджета» по макету Figma Frame 8 (узел 116:134 «Колонки», 500px по высоте). В карточке
@@ -21,13 +26,21 @@ defineProps<{ data: BudgetStructure }>()
     >
       <thead class="text-base font-bold text-primary">
         <tr>
-          <th scope="col" class="h-8 align-top" :class="[COLUMN_CLASS.category, PINNED_Z.category]">
+          <th
+            scope="col"
+            class="h-8 align-top"
+            :class="[COLUMN_CLASS.category, LAYER_CLASS.row.category]"
+          >
             Категория
           </th>
-          <th scope="col" class="h-8 align-top" :class="[COLUMN_CLASS.plan, PINNED_Z.plan]">
+          <th scope="col" class="h-8 align-top" :class="[COLUMN_CLASS.plan, LAYER_CLASS.row.plan]">
             План
           </th>
-          <th scope="col" class="h-8 align-top" :class="[COLUMN_CLASS.average, PINNED_Z.average]">
+          <th
+            scope="col"
+            class="h-8 align-top"
+            :class="[COLUMN_CLASS.average, LAYER_CLASS.row.average]"
+          >
             Среднее
           </th>
           <th

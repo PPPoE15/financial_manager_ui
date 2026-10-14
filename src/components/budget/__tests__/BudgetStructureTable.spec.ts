@@ -186,6 +186,23 @@ describe('BudgetStructureTable', () => {
     }
   })
 
+  it('закреплённая «Сумма» лежит над «Планом» и «Средним» итога, которые уезжают под неё на узком экране', () => {
+    // z-index без префикса ширины: ниже sm «План» и «Среднее» итога прокручиваются влево под «Сумму»
+    const zIndex = (cell: DOMWrapper<Element>) =>
+      Number(
+        cell
+          .classes()
+          .find((name) => /^z-\d+$/.test(name))
+          ?.slice(2) ?? 0,
+      )
+    const [total, plan, average, january] = mountTable().findAll('tfoot th, tfoot td')
+
+    expect(zIndex(total!)).toBeGreaterThan(zIndex(plan!))
+    expect(zIndex(total!)).toBeGreaterThan(zIndex(average!))
+    expect(zIndex(plan!)).toBeGreaterThan(zIndex(january!))
+    expect(zIndex(january!)).toBeGreaterThan(0)
+  })
+
   it('по высоте не меньше половины таблицы макета (250px) и не больше макета (500px)', () => {
     const scroll = mountTable().get('[data-testid="budget-table-scroll"]')
 

@@ -22,7 +22,7 @@ export const MONTH_NAMES = [
 // Ширины закреплённых колонок фиксированные: отступ `left` следующей — сумма ширин предыдущих
 // (315 = 200 + 115). «Категория» уже макета (241px), чтобы «План» и «Среднее» стояли ближе к названию:
 // название длиннее `CATEGORY_NAME_MAX` символов обрезается (FM-43); ниже sm оно переносится.
-// z-index закреплённых ячеек задаёт строка (`PINNED_Z`): у итоговой он выше, чем у статей под ней.
+// z-index закреплённых ячеек задаёт строка (`LAYER_CLASS`): у итоговой он выше, чем у статей под ней.
 export const COLUMN_CLASS = {
   category:
     'sticky left-0 w-[136px] min-w-[136px] whitespace-normal bg-surface-card pl-3 text-left [overflow-wrap:anywhere] sm:w-[200px] sm:min-w-[200px] sm:pl-6',
@@ -43,16 +43,20 @@ export const CATEGORY_NAME_MAX = 20
  */
 export const CATEGORY_NAME_CLASS = 'block sm:max-w-[176px] sm:truncate'
 
-/** z-index закреплённых по горизонтали колонок в шапке и строках статей («План» и «Среднее» — с sm). */
-export const PINNED_Z = { category: 'z-10', plan: 'sm:z-10', average: 'sm:z-10' } as const
-
 /**
- * Ячейки итоговой строки прилипают к низу прокрутки; её закреплённые слева ячейки — над всеми,
- * месяцы — над строками статей.
+ * Слои ячеек по колонкам: для шапки и строк статей (`row`) и для итоговой строки (`total`). z-index — без
+ * префикса ширины (у незакреплённой ячейки он ни на что не влияет), чтобы порядок слоёв был один на любом
+ * экране: «Сумма» над «Планом» и «Средним» итога (ниже sm они уезжают под неё), те — над месяцами итога,
+ * а вся итоговая строка — над строками статей, которые прокручиваются под неё.
  */
-export const TOTAL_CLASS = {
-  pinned: 'sticky bottom-0 z-20',
-  month: 'sticky bottom-0 z-10 bg-surface-card',
+export const LAYER_CLASS = {
+  row: { category: 'z-10', plan: 'z-10', average: 'z-10', month: '' },
+  total: {
+    category: 'sticky bottom-0 z-30',
+    plan: 'sticky bottom-0 z-20',
+    average: 'sticky bottom-0 z-20',
+    month: 'sticky bottom-0 z-10 bg-surface-card',
+  },
 } as const
 
 /** Класс колонки месяца по индексу 0–11: перед январём — вертикальный разделитель. */

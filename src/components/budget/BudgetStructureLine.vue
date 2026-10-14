@@ -5,9 +5,8 @@ import {
   CATEGORY_NAME_CLASS,
   CATEGORY_NAME_MAX,
   COLUMN_CLASS,
+  LAYER_CLASS,
   monthColumnClass,
-  PINNED_Z,
-  TOTAL_CLASS,
 } from '@/components/budget/columns'
 import MoneyCell from '@/components/budget/MoneyCell.vue'
 import type { MonthFact } from '@/types/budget'
@@ -29,11 +28,7 @@ const shortName = computed(() =>
     : null,
 )
 
-const pinned = computed(() =>
-  props.total
-    ? { category: TOTAL_CLASS.pinned, plan: TOTAL_CLASS.pinned, average: TOTAL_CLASS.pinned }
-    : PINNED_Z,
-)
+const layer = computed(() => (props.total ? LAYER_CLASS.total : LAYER_CLASS.row))
 </script>
 
 <template>
@@ -41,7 +36,7 @@ const pinned = computed(() =>
     <th
       scope="row"
       :title="shortName ? name : undefined"
-      :class="[COLUMN_CLASS.category, pinned.category, !total && 'font-medium']"
+      :class="[COLUMN_CLASS.category, layer.category, !total && 'font-medium']"
     >
       <span :class="CATEGORY_NAME_CLASS">
         <template v-if="shortName">
@@ -54,12 +49,12 @@ const pinned = computed(() =>
     <MoneyCell
       :value="plan"
       missing-label="план не задан"
-      :class="[COLUMN_CLASS.plan, pinned.plan]"
+      :class="[COLUMN_CLASS.plan, layer.plan]"
     />
     <MoneyCell
       :value="average"
       missing-label="нет завершённых месяцев"
-      :class="[COLUMN_CLASS.average, pinned.average]"
+      :class="[COLUMN_CLASS.average, layer.average]"
     />
     <!-- TODO(FM-28): месяц берётся по позиции в `months`, а не по `month`; контракт обещает январь–декабрь
          по порядку — сверить с реализацией FM-27 при приёмке или искать ячейку по номеру месяца. -->
@@ -68,7 +63,7 @@ const pinned = computed(() =>
       :key="month.month"
       :value="month.fact"
       missing-label="месяц ещё не наступил"
-      :class="[monthColumnClass(index), total && TOTAL_CLASS.month]"
+      :class="[monthColumnClass(index), layer.month]"
     />
   </tr>
 </template>
