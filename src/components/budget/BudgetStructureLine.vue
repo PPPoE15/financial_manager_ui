@@ -24,11 +24,13 @@ const props = defineProps<{
 // Обрезанное название видно глазами, полное — для скринридера и в подсказке при наведении. Подсказка — у любой
 // статьи: 20 и меньше широких букв тоже не влезают в колонку и обрезаются CSS. Она на видимом тексте, а не на
 // `th`, чтобы скринридер не читал название дважды (имя ячейки и её описание).
-const shortName = computed(() =>
-  props.name.length > CATEGORY_NAME_MAX
-    ? `${props.name.slice(0, CATEGORY_NAME_MAX).trimEnd()}…`
-    : null,
-)
+// Символы — кодовые точки, как в валидации названия (`length` в auth/validation.ts): эмодзи не разрезается
+const shortName = computed(() => {
+  const chars = [...props.name]
+  return chars.length > CATEGORY_NAME_MAX
+    ? `${chars.slice(0, CATEGORY_NAME_MAX).join('').trimEnd()}…`
+    : null
+})
 
 const layer = computed(() => (props.total ? LAYER_CLASS.total : LAYER_CLASS.row))
 </script>

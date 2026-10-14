@@ -185,6 +185,16 @@ describe('BudgetStructureTable', () => {
     expect(name.find('[aria-hidden="true"]').exists()).toBe(false)
   })
 
+  it('длину названия считает по символам, как валидация: эмодзи не разрезает и не считает за два', () => {
+    const data = budgetStructure()
+    data.rows[0]!.category.name = 'подарки на новый 🎁🎄 год'
+    data.rows[1]!.category.name = 'подарки на новый 🎁🎄'
+    const [cut, whole] = mountTable(data).findAll('tbody th')
+
+    expect(cut!.get('[aria-hidden="true"]').text()).toBe('подарки на новый 🎁🎄…')
+    expect(whole!.find('[aria-hidden="true"]').exists()).toBe(false)
+  })
+
   it('у строки «Сумма» подсказки нет', () => {
     expect(mountTable().get('tfoot th').find('[title]').exists()).toBe(false)
   })
