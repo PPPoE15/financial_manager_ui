@@ -23,7 +23,8 @@ function focusables(): HTMLElement[] {
 
 /** Фокус на первое поле, если его в окне нет (окно только открылось или блок с фокусом убран). */
 function keepFocusInside(): void {
-  if (panel.value && !panel.value.contains(document.activeElement)) focusables()[0]?.focus()
+  const items = focusables()
+  if (!items.some((item) => item === document.activeElement)) items[0]?.focus()
 }
 
 function onKeydown(event: KeyboardEvent): void {
@@ -64,11 +65,10 @@ watch(visible, async (open) => {
 })
 
 // При disabled-кнопке оставляем фокус в доступном readonly-поле, чтобы Tab не вышел из окна.
-watch(submitting, async (pending) => {
-  if (pending) {
-    await nextTick()
-    focusables()[0]?.focus()
-  }
+watch([submitting, needName, needBalance], async () => {
+  // Сохранённый блок исчезает сразу, не дожидаясь второго запроса: его фокус переносим в оставшийся.
+  await nextTick()
+  if (visible.value) keepFocusInside()
 })
 async function onSubmit(): Promise<void> {
   await submit()
