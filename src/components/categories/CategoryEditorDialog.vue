@@ -88,10 +88,13 @@ async function onSubmit(): Promise<void> {
     return
   }
   // Окно остаётся открытым: строка с фокусом могла сохраниться и уйти из DOM, а кнопка на время запроса
-  // становилась disabled — без фокуса внутри панели не работают Escape и удержание Tab
-  // TODO(FM-42): ставить фокус в первое поле с ошибкой, а не в первый элемент окна (крестик).
+  // становилась disabled — без фокуса внутри панели не работают Escape и удержание Tab. Фокус — в первое поле
+  // с ошибкой (FM-44): при многих статьях оно может быть вне видимой части колонок, и браузер докрутит к нему;
+  // если ошибка не у поля (лимит статей, сеть) — в первый элемент окна.
   await nextTick()
-  keepFocusInside()
+  const invalid = panel.value?.querySelector<HTMLElement>('[aria-invalid="true"]')
+  if (invalid) invalid.focus()
+  else keepFocusInside()
 }
 
 onMounted(async () => {

@@ -352,6 +352,29 @@ describe('CategoryEditorDialog', () => {
     expect(w.emitted('close')).toBeUndefined()
   })
 
+  it('после «Сохранить» с ошибками фокус — в первом поле с ошибкой: браузер докрутит к нему колонки', async () => {
+    // При многих статьях строка с ошибкой может быть за пределами видимой части прокрутки
+    await mountDialog()
+    await fillRow(column('Расходы'), 0, { name: 'Транспорт' })
+    await fillRow(column('Доходы'), 0, { name: 'Премия', plan: 'abc' })
+
+    await save()
+
+    const row = newRows(column('Доходы'))[0]!
+    expect(document.activeElement).toBe(input(row, 'План').element)
+  })
+
+  it('ошибка сервера в строке: фокус — в её поле', async () => {
+    await mountDialog()
+    create.mockRejectedValueOnce(httpError(409, { code: 'FM-409101' }))
+    await fillRow(column('Доходы'), 0, { name: 'Премия' })
+
+    await save()
+
+    const row = newRows(column('Доходы'))[0]!
+    expect(document.activeElement).toBe(input(row, 'Название категории').element)
+  })
+
   it('одинаковые новые строки в колонке — ошибка у второй', async () => {
     await mountDialog()
     const col = column('Расходы')
