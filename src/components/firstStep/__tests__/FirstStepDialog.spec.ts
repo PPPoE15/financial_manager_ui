@@ -311,6 +311,42 @@ describe('FirstStepDialog', () => {
   })
 
   describe('клавиатура и модальность', () => {
+    it('во время сохранения фокус остаётся в окне, поля доступны только для чтения', async () => {
+      const pending = deferred<User>()
+      vi.mocked(updateCurrentUser).mockReturnValue(pending.promise)
+      const w = await mountDialog(withoutName, 'set')
+      await field(w, NAME_LABEL).setValue('Артём')
+      ;(submitButton(w).element as HTMLElement).focus()
+      await w.get('form').trigger('submit')
+      await flushPromises()
+      expect(field(w, NAME_LABEL).attributes('readonly')).toBeDefined()
+      expect(document.activeElement).toBe(field(w, NAME_LABEL).element)
+      pending.resolve(withName)
+      await flushPromises()
+    })
+
+    it('после сохранения имени удерживает фокус в сумме, пока её запрос ещё выполняется', async () => {
+      const namePending = deferred<User>()
+      const balancePending = deferred<typeof balance>()
+      vi.mocked(updateCurrentUser).mockReturnValue(namePending.promise)
+      vi.mocked(createStartingBalance).mockReturnValue(balancePending.promise)
+      const w = await mountDialog(withoutName, 'missing')
+      await field(w, NAME_LABEL).setValue('Артём')
+      await field(w, AMOUNT_LABEL).setValue('120000')
+      ;(submitButton(w).element as HTMLElement).focus()
+      await w.get('form').trigger('submit')
+      await flushPromises()
+      namePending.resolve(withName)
+      await flushPromises()
+      expect(labels(w)).toEqual([AMOUNT_LABEL])
+      expect(submitButton(w).attributes('aria-busy')).toBe('true')
+      expect(document.activeElement).toBe(field(w, AMOUNT_LABEL).element)
+      await field(w, AMOUNT_LABEL).trigger('keydown', { key: 'Tab' })
+      expect(document.activeElement).toBe(field(w, AMOUNT_LABEL).element)
+      balancePending.resolve(balance)
+      await flushPromises()
+    })
+
     it('при открытии фокус в первом поле', async () => {
       const w = await mountDialog(withoutName, 'missing')
 

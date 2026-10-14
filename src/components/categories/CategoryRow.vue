@@ -27,7 +27,7 @@ const messages = computed(() =>
 )
 
 const field =
-  'h-[46px] w-full min-w-0 rounded-sm border bg-surface px-[15px] text-sm font-medium text-ink outline-none placeholder:font-normal placeholder:text-ink-placeholder focus-visible:outline-2 focus-visible:outline-offset-0 focus-visible:outline-primary'
+  'h-[46px] w-full min-w-0 rounded-sm border bg-field px-[15px] text-base sm:text-sm font-medium text-ink outline-none placeholder:font-normal placeholder:text-ink-placeholder focus-visible:outline-2 hover:bg-field-hover focus-visible:outline-offset-2 focus-visible:outline-focus'
 
 // TODO(FM-46): у полей всех строк одинаковые aria-label («Название категории», «План», «Комментарий») — при многих
 // статьях скринридер читает «План, 4 990» без указания статьи. Связать поля существующей статьи с её названием
