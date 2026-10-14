@@ -95,8 +95,9 @@ describe('LoginView', () => {
     it('показывает тексты и поля из макета', async () => {
       const w = await mountAt(LOGIN_ROUTE)
 
-      expect(w.get('h1').text()).toBe('С возвращением!')
-      expect(w.get('h2').text()).toBe('Войти в аккаунт')
+      expect(w.get('h1').text()).toBe('Войти в аккаунт')
+      expect(w.text()).toContain('Ваш путь к финансовой свободе')
+      expect(w.get('aside img').attributes('alt')).toBe('Финансовый менеджер')
       expect(field(w, 'Электронная почта').attributes('placeholder')).toBe('name@example.com')
       expect(field(w, 'Пароль').attributes('placeholder')).toBe('Введите пароль')
       expect(field(w, 'Пароль').attributes('type')).toBe('password')
@@ -116,7 +117,7 @@ describe('LoginView', () => {
       await flushPromises()
 
       expect(router.currentRoute.value.name).toBe(REGISTER_ROUTE)
-      expect(w.get('h2').text()).toBe('Создать аккаунт')
+      expect(w.get('h1').text()).toBe('Создать аккаунт')
     })
 
     it('пустая форма показывает ошибки у полей и не отправляет запрос', async () => {
@@ -181,6 +182,8 @@ describe('LoginView', () => {
       expect(message.text()).toBe('Неверный email или пароль')
       expect(message.attributes('role')).toBe('alert')
       expect(alert).not.toHaveBeenCalled()
+      expect((field(w, 'Электронная почта').element as HTMLInputElement).value).toBe('name@example.com')
+      expect((field(w, 'Пароль').element as HTMLInputElement).value).toBe('s3cret-Passw0rd')
       expect(useSessionStore().token).toBeNull()
       expect(router.currentRoute.value.name).toBe(LOGIN_ROUTE)
     })
@@ -228,8 +231,7 @@ describe('LoginView', () => {
     it('показывает тексты и поля из макета', async () => {
       const w = await mountAt(REGISTER_ROUTE)
 
-      expect(w.get('h1').text()).toBe('Добро пожаловать!')
-      expect(w.get('h2').text()).toBe('Создать аккаунт')
+      expect(w.get('h1').text()).toBe('Создать аккаунт')
       expect(w.findAll('label').map((l) => l.text())).toEqual([
         'Электронная почта',
         'Пароль',
@@ -285,6 +287,32 @@ describe('LoginView', () => {
         'Пользователь с такой почтой уже зарегистрирован',
       )
       expect(login).not.toHaveBeenCalled()
+      for (const label of ['Пароль', 'Подтвердите пароль']) {
+        expect((field(w, label).element as HTMLInputElement).value).toBe('s3cret-Passw0rd')
+      }
+      expect((field(w, 'Электронная почта').element as HTMLInputElement).value).toBe('name@example.com')
+    })
+
+    it('блокирует повторную регистрацию до завершения автоматического входа', async () => {
+      const registration = deferred<typeof user>()
+      const signIn = deferred<typeof tokens>()
+      vi.mocked(register).mockReturnValue(registration.promise)
+      vi.mocked(login).mockReturnValue(signIn.promise)
+      const w = await mountAt(REGISTER_ROUTE, { redirect: '/?from=registration' })
+      await fillRegistration(w)
+      await w.get('form').trigger('submit')
+      await w.get('form').trigger('submit')
+      expect(register).toHaveBeenCalledOnce()
+      expect(submitButton(w).attributes('disabled')).toBeDefined()
+      registration.resolve(user)
+      await flushPromises()
+      await w.get('form').trigger('submit')
+      expect(register).toHaveBeenCalledOnce()
+      expect(login).toHaveBeenCalledOnce()
+      expect(submitButton(w).attributes('disabled')).toBeDefined()
+      signIn.resolve(tokens)
+      await flushPromises()
+      await vi.waitFor(() => expect(router.currentRoute.value.fullPath).toBe('/?from=registration'))
     })
 
     it('аккаунт создан, но вход не удался — понятное сообщение', async () => {

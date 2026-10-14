@@ -13,9 +13,9 @@ const emit = defineEmits<{ submit: [] }>()
 
 <template>
   <!-- novalidate: проверку делаем сами и показываем свои сообщения, а не всплывающие подсказки браузера -->
-  <form class="flex flex-col gap-9" novalidate @submit.prevent="emit('submit')">
+  <form class="flex flex-col gap-[22.5px]" novalidate @submit.prevent="emit('submit')">
     <slot />
-    <div class="flex flex-col gap-3">
+    <div class="mt-[30px] flex flex-col gap-3">
       <ErrorMessage data-testid="form-error" :message="message" />
       <BaseButton type="submit" class="w-full" :loading="submitting">{{ submitLabel }}</BaseButton>
     </div>
