@@ -72,13 +72,16 @@ async function onLoad(): Promise<void> {
 
 async function onSubmit(): Promise<void> {
   const result = await save()
-  if (!result) {
-    await nextTick()
-    keepFocusInside()
+  if (result?.saved) emit('saved')
+  if (result?.complete) {
+    emit('close')
     return
   }
-  if (result.saved) emit('saved')
-  if (result.complete) emit('close')
+  // Окно остаётся открытым: строка с фокусом могла сохраниться и уйти из DOM, а кнопка на время запроса
+  // становилась disabled — без фокуса внутри панели не работают Escape и удержание Tab
+  // TODO(FM-42): ставить фокус в первое поле с ошибкой, а не в первый элемент окна (крестик).
+  await nextTick()
+  keepFocusInside()
 }
 
 onMounted(async () => {

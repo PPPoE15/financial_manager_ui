@@ -441,6 +441,21 @@ describe('CategoryEditorDialog', () => {
     expect(w.emitted('close')).toHaveLength(1)
   })
 
+  it('частичная ошибка: фокус остаётся в окне, хотя сохранённая строка с фокусом убрана', async () => {
+    await mountDialog()
+    const col = column('Расходы')
+    await fillRow(col, 0, { name: 'Кафе' })
+    await fillRow(col, 1, { name: 'Такси' })
+    create.mockImplementation((body) =>
+      body.name === 'Такси' ? Promise.reject(httpError(409, { code: 'FM-409101' })) : echo(body),
+    )
+    input(newRows(col)[0]!, 'Название категории').element.focus()
+
+    await save()
+
+    expect(page().get('[role="dialog"]').element.contains(document.activeElement)).toBe(true)
+  })
+
   it('фокус: при открытии — в окне, Tab с последнего элемента переходит на первый', async () => {
     await mountDialog()
     const dialog = page().get('[role="dialog"]')
