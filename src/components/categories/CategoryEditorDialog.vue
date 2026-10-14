@@ -111,6 +111,11 @@ async function onSubmit(): Promise<void> {
 // Ошибка у строки — фокус в её поле с ошибкой (или в первое, если ошибка строки целиком, как лимит), и строка
 // с текстом ошибки докручивается в видимую часть: focus() не прокручивает уже видимое поле. Общая ошибка (сеть,
 // 5xx) — фокус на «Сохранить», рядом с её сообщением.
+// NOTE(FM-44): при ошибке строки и общей ошибке в одном сохранении фокус — в строку; ниже 540px сообщение у
+// «Сохранить» тогда может оказаться за нижним краем (скринридер объявит его через role="alert").
+// TODO(FM-44): строка ищется по DOM дочерних компонентов (`data-testid="new-row"`, `aria-invalid`, `role="alert"`
+// из ErrorMessage) — при смене их разметки фокус тихо уйдёт на «Сохранить». Искать по состоянию
+// (`rows[].errors`/`.message`) и звать `focusError()` строки через `defineExpose`.
 function focusError(): void {
   const rows = panel.value ? [...panel.value.querySelectorAll<HTMLElement>(NEW_ROW)] : []
   const row = rows.find((item) => item.querySelector('[aria-invalid="true"], [role="alert"]'))

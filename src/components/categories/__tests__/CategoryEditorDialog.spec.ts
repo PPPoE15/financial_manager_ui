@@ -149,6 +149,8 @@ describe('CategoryEditorDialog', () => {
   beforeEach(() => {
     create.mockImplementation(echo)
     // В jsdom нет scrollIntoView
+    // TODO(FM-44): подмена не восстанавливается после тестов (Vitest изолирует файлы — пока безвредно), а тест
+    // клиентской проверки не проверяет прокрутку строки — основной путь при многих статьях.
     Element.prototype.scrollIntoView = scrollIntoView
     scrollIntoView.mockClear()
   })
