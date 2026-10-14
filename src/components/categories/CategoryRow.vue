@@ -29,6 +29,11 @@ const messages = computed(() =>
 const field =
   'h-[46px] w-full min-w-0 rounded-sm border bg-surface px-[15px] text-sm font-medium text-ink outline-none placeholder:font-normal placeholder:text-ink-placeholder focus-visible:outline-2 focus-visible:outline-offset-0 focus-visible:outline-primary'
 
+// TODO(FM-46): у полей всех строк одинаковые aria-label («Название категории», «План», «Комментарий») — при многих
+// статьях скринридер читает «План, 4 990» без указания статьи. Связать поля существующей статьи с её названием
+// (например, aria-label «План: Продукты» или группа с подписью).
+// TODO(FM-46): у полей нет title с полным текстом, как было у ячеек только для чтения (FM-42): длинное название
+// (поле 184px) или комментарий видны только началом. Вернуть :title со значением поля.
 // TODO(FM-42): aria-describedby всех полей строки ссылается на общий список ошибок, а текст ошибки не называет
 // поле — скринридер зачитывает ошибку плана и на названии, и на комментарии. Связывать каждое поле со своей ошибкой.
 function attrs(name: RowField): InputHTMLAttributes {
