@@ -1,34 +1,26 @@
 <script setup lang="ts">
 import { useId } from 'vue'
 
-import CategoryNewRow from '@/components/categories/CategoryNewRow.vue'
-import type { EditorColumn, NewRow, NewRowField } from '@/categories/useCategoryEditor'
-import { formatMoney } from '@/utils/money'
+import CategoryRow from '@/components/categories/CategoryRow.vue'
+import type { EditorColumn, EditorRow, RowField } from '@/categories/useCategoryEditor'
 
 // Колонка «Расходы» / «Доходы» окна «Редактирование категорий» (макет «Новый дизайн», узлы 234:962 и
-// 237:1084): существующие статьи строками из трёх ячеек — название 184px, план 185px, комментарий 292px,
-// между ячейками 5px, между строками 4px — и пустые строки для новых статей. Существующие статьи
-// только для чтения: их изменение — FM-4.
+// 237:1084): существующие статьи и пустые строки для новых — одинаковыми строками из трёх полей (название 184px,
+// план 185px, комментарий 292px, между ячейками 5px, между строками 4px). Существующие статьи правятся в тех же
+// полях (FM-46); у пустого комментария — бледная подсказка «Комментарий», как в макете.
 defineProps<{
   column: EditorColumn
   title: string
   emptyText: string
   /** Цвет заголовка: расходы — красный, доходы — зелёный, как в макете. */
   tone: 'danger' | 'success'
-  /** Строки для новых статей только для чтения (идёт сохранение). */
+  /** Все строки только для чтения (идёт сохранение). */
   readonly?: boolean
 }>()
 
-defineEmits<{ update: [row: NewRow, field: NewRowField, value: string] }>()
+defineEmits<{ update: [row: EditorRow, field: RowField, value: string] }>()
 
 const headingId = useId()
-
-/** Сумма без знака рубля: знак выводится отдельно у края ячейки. */
-function amount(value: number): string {
-  return formatMoney(value).replace(/\s₽$/, '')
-}
-
-const cell = 'flex h-[46px] min-w-0 items-center rounded-sm bg-surface px-[15px] text-sm text-ink'
 </script>
 
 <template>
@@ -51,30 +43,13 @@ const cell = 'flex h-[46px] min-w-0 items-center rounded-sm bg-surface px-[15px]
       class="mt-[15px] flex flex-col gap-3 sm:gap-1"
       :aria-label="`Статьи: ${title.toLowerCase()}`"
     >
-      <li
-        v-for="category in column.categories"
-        :key="category.uid"
-        data-testid="category-row"
-        class="grid grid-cols-2 gap-[5px] sm:grid-cols-[184fr_185fr_292fr]"
-      >
-        <span data-testid="cell" :class="[cell, 'col-span-2 font-medium sm:col-span-1']">
-          <span class="truncate" :title="category.name">{{ category.name }}</span>
-        </span>
-        <span data-testid="cell" :class="[cell, 'justify-between font-medium']">
-          <!-- Как в макете: сумма слева, знак ₽ у правого края ячейки -->
-          <template v-if="category.money_plan !== null">
-            <span>{{ amount(category.money_plan) }}&nbsp;</span><span>₽</span>
-          </template>
-          <span v-else class="sr-only">план не задан</span>
-        </span>
-        <!-- NOTE(FM-42): в макете у статьи без комментария в ячейке бледная подсказка «Комментарий», как
-             в поле ввода. Существующие статьи пока только для чтения, и подсказка выдавала бы ячейку за поле —
-             ячейка пустая. С редактированием (FM-4) ячейки станут полями с этой подсказкой. -->
-        <span data-testid="cell" :class="cell">
-          <span v-if="category.description" class="truncate" :title="category.description">{{
-            category.description
-          }}</span>
-        </span>
+      <li v-for="row in column.categories" :key="row.key">
+        <CategoryRow
+          data-testid="category-row"
+          :row="row"
+          :readonly="readonly"
+          @update="(field, value) => $emit('update', row, field, value)"
+        />
       </li>
     </ul>
 
@@ -82,9 +57,10 @@ const cell = 'flex h-[46px] min-w-0 items-center rounded-sm bg-surface px-[15px]
       class="flex flex-col gap-3 sm:gap-1"
       :class="column.categories.length === 0 ? 'mt-4' : 'mt-3 sm:mt-1'"
     >
-      <CategoryNewRow
+      <CategoryRow
         v-for="row in column.rows"
         :key="row.key"
+        data-testid="new-row"
         :row="row"
         :readonly="readonly"
         @update="(field, value) => $emit('update', row, field, value)"
