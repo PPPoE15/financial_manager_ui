@@ -718,6 +718,43 @@ describe('CategoryEditorDialog', () => {
       expect(w.emitted('close')).toBeUndefined()
     })
 
+    it.each([
+      ['нет связи', networkError, NETWORK_ERROR],
+      ['5xx', () => httpError(503), SERVER_ERROR],
+    ])(
+      'освобождающее переименование упало («%s»): зависящая строка без ложного дубликата, общее сообщение',
+      async (_, error, message) => {
+        const outcome = [category()]
+        await mountDialog({ outcome })
+        const col = column('Расходы')
+        update.mockRejectedValue(error())
+        await editRow(col, 0, { name: 'Еда' })
+        await fillRow(col, 0, { name: 'Продукты' })
+
+        await save()
+
+        expect(create).not.toHaveBeenCalled()
+        expect(newRows(col)[0]!.text()).not.toContain('Такая статья уже есть')
+        expect(page().get('[data-testid="form-error"]').text()).toBe(message)
+        // Ошибки у строк нет — фокус на «Сохранить», рядом с сообщением (FM-44)
+        expect(document.activeElement).toBe(page().get('button[type="submit"]').element)
+      },
+    )
+
+    it('освобождающее переименование получило 404 (статья удалена): название свободно, POST уходит', async () => {
+      const outcome = [category()]
+      await mountDialog({ outcome })
+      const col = column('Расходы')
+      update.mockRejectedValue(httpError(404, { code: 'FM-404000' }))
+      await editRow(col, 0, { name: 'Еда' })
+      await fillRow(col, 0, { name: 'Продукты' })
+
+      await save()
+
+      expect(create).toHaveBeenCalledWith(expect.objectContaining({ name: 'Продукты' }))
+      expect(existingRow(col, 0).text()).toContain('Статья удалена')
+    })
+
     it('обмен названиями двух статей — ошибка у обеих до отправки: за одно сохранение его не сделать', async () => {
       await mountDialog()
       const col = column('Расходы')

@@ -108,6 +108,12 @@ interface ProblemResponse {
 // TODO(FM-42): разбор «нет ответа / 5xx / 422 по полям» и `ProblemResponse` повторяют mapAuthError
 // из auth/errors.ts (и mapSaveError из firstStep) — вынести общий разбор ошибок API.
 /** Разложить ошибку `POST`/`PATCH /categories` по строке; вернуть общее сообщение окна, если оно нужно. */
+/**
+ * Исход запроса «Сохранить»: `saved`; `rejected` — ошибка у строки (дубликат, лимит, 422 по полю); `gone` — 404,
+ * статьи нет; `failed` — общая ошибка окна (сеть, 5xx, неразобранный ответ).
+ */
+type SaveOutcome = 'saved' | 'rejected' | 'gone' | 'failed'
+
 function applySaveError(row: EditorRow, error: unknown): string | null {
   if (!isAxiosError(error)) return GENERIC_ERROR
   if (!error.response) return NETWORK_ERROR
@@ -276,15 +282,18 @@ export function useCategoryEditor(): CategoryEditor {
     column.rows.splice(column.rows.indexOf(row), 1)
   }
 
-  async function saveRow(request: SaveRequest): Promise<boolean> {
+  async function saveRow(request: SaveRequest): Promise<SaveOutcome> {
     const { row } = request
     try {
       await send(request)
-      return true
+      return 'saved'
     } catch (error) {
       const windowMessage = applySaveError(row, error)
-      if (windowMessage) message.value = windowMessage
-      return false
+      if (windowMessage) {
+        message.value = windowMessage
+        return 'failed'
+      }
+      return isAxiosError(error) && error.response?.status === 404 ? 'gone' : 'rejected'
     }
   }
 
@@ -355,17 +364,21 @@ export function useCategoryEditor(): CategoryEditor {
     }
     if (invalid) return null
 
-    const runs = new Map<SaveRequest, Promise<boolean>>()
-    function run(request: SaveRequest): Promise<boolean> {
+    const runs = new Map<SaveRequest, Promise<SaveOutcome>>()
+    function run(request: SaveRequest): Promise<SaveOutcome> {
       let result = runs.get(request)
       if (!result) {
         const holder = holders.get(request)
         result = (async () => {
-          if (holder && !(await run(holder))) {
-            // Название так и осталось за другой статьёй
+          const freed = holder ? await run(holder) : 'saved'
+          // Переименование отклонено (409/422) — название так и осталось за другой статьёй
+          if (freed === 'rejected') {
             request.row.errors = { name: DUPLICATE_ERROR }
-            return false
+            return 'rejected'
           }
+          // Сеть / 5xx: исход неизвестен, ошибки у строки нет — общее сообщение окна уже показано, запрос не уходит
+          if (freed === 'failed') return 'failed'
+          // Сохранено или статьи уже нет (404) — название свободно
           return saveRow(request)
         })()
         runs.set(request, result)
@@ -376,7 +389,7 @@ export function useCategoryEditor(): CategoryEditor {
     saving.value = true
     try {
       const results = await Promise.all(requests.map(run))
-      const saved = results.filter(Boolean).length
+      const saved = results.filter((outcome) => outcome === 'saved').length
       return { saved, complete: saved === results.length }
     } finally {
       saving.value = false
