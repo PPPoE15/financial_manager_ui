@@ -216,6 +216,17 @@ describe('BudgetStructureCard', () => {
       expect(wrapper.findComponent(CategoryEditorDialog).exists()).toBe(true)
     })
 
+    it('фокусирует кнопку перед открытием редактора, даже если браузер не фокусирует клик', async () => {
+      api.mockResolvedValue(budgetStructure())
+      const wrapper = mount(BudgetStructureCard, { attachTo: document.body, global: { stubs } })
+      await flushPromises()
+      const opener = button(wrapper, 'Редактировать категории')
+      expect(document.activeElement).not.toBe(opener.element)
+      await opener.trigger('click')
+      expect(document.activeElement).toBe(opener.element)
+      wrapper.unmount()
+    })
+
     it('после сохранения статей таблица перезапрашивается', async () => {
       api.mockResolvedValue(budgetStructure())
       const wrapper = mount(BudgetStructureCard, { global: { stubs } })

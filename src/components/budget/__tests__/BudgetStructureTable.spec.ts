@@ -36,6 +36,24 @@ function cells(row: DOMWrapper<Element>): string[] {
 }
 
 describe('BudgetStructureTable', () => {
+  it('область прокрутки доступна с клавиатуры и имеет понятное имя', () => {
+    const scroll = mountTable().get('[data-testid="budget-table-scroll"]')
+    expect(scroll.attributes('tabindex')).toBe('0')
+    expect(scroll.attributes('role')).toBe('region')
+    expect(scroll.attributes('aria-label')).toBe('Структура бюджета по месяцам')
+  })
+
+  it('поясняет разные причины прочерка также при наведении', () => {
+    const data = budgetStructure()
+    data.rows[1]!.average = null
+    const tds = mountTable(data).findAll('tbody tr')[1]!.findAll('td')
+    expect(tds[0]!.attributes('title')).toBe('план не задан')
+    expect(tds[1]!.attributes('title')).toBe('нет завершённых месяцев')
+    expect(tds[5]!.attributes('title')).toBe('месяц ещё не наступил')
+    expect(tds[2]!.attributes('title')).toBeUndefined()
+    expect(tds[2]!.text()).toBe(`0${NBSP}₽`)
+  })
+
   it('выводит колонки «Категория», «План», «Среднее» и 12 месяцев', () => {
     const headers = mountTable()
       .findAll('thead th')

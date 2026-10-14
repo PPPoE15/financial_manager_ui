@@ -6,7 +6,10 @@ defineProps<{ value: number | null; missingLabel: string }>()
 </script>
 
 <template>
-  <td :class="value === null && 'text-ink-placeholder'">
+  <td
+    :class="value === null && 'text-ink-placeholder'"
+    :title="value === null ? missingLabel : undefined"
+  >
     <template v-if="value === null">
       <span aria-hidden="true">{{ formatMoney(null) }}</span>
       <span class="sr-only">{{ missingLabel }}</span>
