@@ -109,15 +109,15 @@ interface ProblemResponse {
   validation?: { field?: string }[]
 }
 
-// TODO(FM-42): разбор «нет ответа / 5xx / 422 по полям» и `ProblemResponse` повторяют mapAuthError
-// из auth/errors.ts (и mapSaveError из firstStep) — вынести общий разбор ошибок API.
-/** Разложить ошибку `POST`/`PATCH /categories` по строке; вернуть общее сообщение окна, если оно нужно. */
 /**
  * Исход запроса «Сохранить»: `saved`; `rejected` — ошибка у строки (дубликат, лимит, 422 по полю); `gone` — 404,
  * статьи нет; `failed` — общая ошибка окна (сеть, 5xx, неразобранный ответ).
  */
 type SaveOutcome = 'saved' | 'rejected' | 'gone' | 'failed'
 
+// TODO(FM-42): разбор «нет ответа / 5xx / 422 по полям» и `ProblemResponse` повторяют mapAuthError
+// из auth/errors.ts (и mapSaveError из firstStep) — вынести общий разбор ошибок API.
+/** Разложить ошибку `POST`/`PATCH /categories` по строке; вернуть общее сообщение окна, если оно нужно. */
 function applySaveError(row: EditorRow, error: unknown): string | null {
   if (!isAxiosError(error)) return GENERIC_ERROR
   if (!error.response) return NETWORK_ERROR
@@ -384,6 +384,9 @@ export function useCategoryEditor(): CategoryEditor {
         result = (async () => {
           const freed = holder ? await run(holder) : 'saved'
           // Переименование отклонено (409/422) — название так и осталось за другой статьёй
+          // TODO(FM-46): «Такая статья уже есть» и тогда, когда переименование отклонено из-за плана или
+          // комментария — причина в другой строке, а связь не видна. Отдельное сообщение: «Название ещё занято:
+          // не сохранилось переименование статьи «…»».
           if (freed === 'rejected') {
             request.row.errors = { name: DUPLICATE_ERROR }
             return 'rejected'
