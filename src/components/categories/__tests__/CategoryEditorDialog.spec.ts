@@ -66,6 +66,7 @@ function echo(body: CategoryCreate): Promise<Category> {
 }
 
 let wrapper: VueWrapper | undefined
+const scrollIntoView = vi.fn<(arg?: boolean | ScrollIntoViewOptions) => void>()
 
 // Окно вынесено в body настоящим Teleport: заглушка teleport пересоздаёт разметку окна при обновлениях,
 // и найденные до сохранения элементы отрываются от документа. Поэтому всё ищется в document.body.
@@ -147,6 +148,11 @@ async function save() {
 describe('CategoryEditorDialog', () => {
   beforeEach(() => {
     create.mockImplementation(echo)
+    // В jsdom нет scrollIntoView
+    // TODO(FM-44): подмена не восстанавливается после тестов (Vitest изолирует файлы — пока безвредно), а тест
+    // клиентской проверки не проверяет прокрутку строки — основной путь при многих статьях.
+    Element.prototype.scrollIntoView = scrollIntoView
+    scrollIntoView.mockClear()
   })
 
   afterEach(() => {
@@ -172,6 +178,45 @@ describe('CategoryEditorDialog', () => {
       ['ЖКХ', '11 500 ₽', ''],
     ])
     expect(existingRows(column('Доходы'))).toEqual([['Зарплата', '200 000 ₽', '']])
+  })
+
+  // TODO(FM-44): тест сверяет точные классы Tailwind (раскладку jsdom не считает) — равнозначная замена, например
+  // запасное значение `vh`, его сломает; содержательна структурная часть (заголовок и «Сохранить» вне прокрутки).
+  it('окно не выше экрана: колонки прокручиваются, заголовок и «Сохранить» — на месте', async () => {
+    await mountDialog()
+    const panel = page().get('[role="dialog"]')
+    const scroll = page().get('[data-testid="category-editor-scroll"]')
+
+    // Выше экрана окно не растёт: иначе центрирование подложкой уводит заголовок за верхний край
+    // Ограничение — только на экране от 540px: ниже прокрутке колонок осталось бы меньше строки, и окно
+    // растёт целиком, прокручиваясь с подложкой
+    expect(panel.classes()).toEqual(
+      expect.arrayContaining([
+        'flex',
+        'flex-col',
+        '[@media(min-height:540px)]:max-h-[calc(100dvh-4rem)]',
+      ]),
+    )
+    expect(panel.classes()).not.toContain('max-h-[calc(100dvh-4rem)]')
+    // relative: sr-only «план не задан» (absolute) иначе позиционируется от панели, выходит из прокрутки
+    // и растягивает подложку — на телефоне она прокручивается на высоту всех строк
+    expect(scroll.classes()).toEqual(
+      expect.arrayContaining(['relative', 'min-h-0', 'flex-1', 'overflow-y-auto']),
+    )
+    expect(scroll.findAll('h3').map((h) => h.text())).toEqual(['Расходы', 'Доходы'])
+    expect(scroll.find('h2').exists()).toBe(false)
+    expect(scroll.find('button[type="submit"]').exists()).toBe(false)
+    expect(scroll.find('[data-testid="form-error"]').exists()).toBe(false)
+  })
+
+  it('окно выше экрана прокручивается с подложкой от своего верха: заголовок не уходит за край', async () => {
+    // Центрирование подложкой (items-center) уводит верх высокого окна за край, куда не прокрутить;
+    // отступы auto у панели центрируют, только пока окно помещается
+    await mountDialog()
+    const panel = page().get('[role="dialog"]')
+
+    expect(panel.classes()).toContain('sm:my-auto')
+    expect(panel.element.parentElement!.className).not.toMatch(/(^|\s)(sm:)?items-center(\s|$)/)
   })
 
   it('существующие статьи только для чтения: полей у них нет, у каждой колонки одна пустая строка', async () => {
@@ -330,6 +375,59 @@ describe('CategoryEditorDialog', () => {
     expect(input(row, 'План').attributes('aria-invalid')).toBe('true')
     expect(newRows(column('Доходы'))[0]!.text()).toContain('Такая статья уже есть')
     expect(w.emitted('close')).toBeUndefined()
+  })
+
+  it('после «Сохранить» с ошибками фокус — в первом поле с ошибкой: браузер докрутит к нему колонки', async () => {
+    // При многих статьях строка с ошибкой может быть за пределами видимой части прокрутки
+    await mountDialog()
+    await fillRow(column('Расходы'), 0, { name: 'Транспорт' })
+    await fillRow(column('Доходы'), 0, { name: 'Премия', plan: 'abc' })
+
+    await save()
+
+    const row = newRows(column('Доходы'))[0]!
+    expect(document.activeElement).toBe(input(row, 'План').element)
+  })
+
+  it('ошибка сервера в строке: фокус — в её поле, строка с текстом ошибки докручена в видимую часть', async () => {
+    // focus() не прокручивает уже видимое поле, а текст ошибки под ним может остаться за краем прокрутки
+    await mountDialog()
+    create.mockRejectedValueOnce(httpError(409, { code: 'FM-409101' }))
+    await fillRow(column('Доходы'), 0, { name: 'Премия' })
+
+    await save()
+
+    const row = newRows(column('Доходы'))[0]!
+    expect(document.activeElement).toBe(input(row, 'Название категории').element)
+    expect(scrollIntoView.mock.contexts).toEqual([row.element])
+    expect(scrollIntoView).toHaveBeenCalledWith({ block: 'nearest' })
+  })
+
+  it('ошибка строки без поля (лимит статей): фокус — в её первое поле, строка докручена', async () => {
+    await mountDialog()
+    await fillRow(column('Расходы'), 0, { name: 'Кафе' })
+    await fillRow(column('Доходы'), 0, { name: 'Бонус' })
+    create.mockImplementation((body) =>
+      body.name === 'Бонус' ? Promise.reject(httpError(409, { code: 'FM-409103' })) : echo(body),
+    )
+
+    await save()
+
+    const row = newRows(column('Доходы'))[0]!
+    expect(row.text()).toContain('Достигнут лимит в 100 статей')
+    expect(document.activeElement).toBe(input(row, 'Название категории').element)
+    expect(scrollIntoView.mock.contexts).toEqual([row.element])
+  })
+
+  it('общая ошибка (нет связи): фокус — на «Сохранить», рядом с сообщением, а не на крестике вверху', async () => {
+    await mountDialog()
+    await fillRow(column('Расходы'), 0, { name: 'Кафе' })
+    create.mockRejectedValue(networkError())
+
+    await save()
+
+    expect(page().get('[data-testid="form-error"]').text()).toBe(NETWORK_ERROR)
+    expect(document.activeElement).toBe(page().get('button[type="submit"]').element)
   })
 
   it('одинаковые новые строки в колонке — ошибка у второй', async () => {

@@ -123,7 +123,12 @@ Vue 3 + TypeScript + Vite SPA («Финансовый менеджер»), Pinia
   `POST` per filled row in parallel: saved rows move into the list, failed rows keep their error
   (`FM-409101` duplicate, `FM-409103` limit, 422 by field), network/5xx go to a window message; the
   window closes only when every row was saved. Rows are window data: `CategoryNewRow` emits `update`,
-  the dialog writes it. Tests mount the dialog with a real Teleport (the teleport stub re-creates the
+  the dialog writes it. Height (FM-44): from 540px of viewport height the window is capped at the
+  viewport (mockup 672px as the minimum when it fits) and only the columns scroll between the fixed
+  header and «Сохранить»; below 540px it grows and scrolls with the backdrop. It is centred with
+  `my-auto`, not `items-center`, so a tall window keeps its top reachable. After a failed save focus goes
+  to the first row with an error (its invalid field, or first field for a row-level error) scrolled into
+  view, or to «Сохранить» for a general error. Tests mount the dialog with a real Teleport (the teleport stub re-creates the
   window markup on updates, detaching elements found earlier).
 - **Money (`src/utils/money.ts`)**: `formatMoney(value)` — app-wide ₽ formatter for integer roubles:
   `10 000 ₽` with NBSP grouping (also for 4-digit numbers, unlike `Intl` ru-RU), `−` for negatives,

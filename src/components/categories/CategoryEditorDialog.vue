@@ -11,6 +11,20 @@ import { useCategoryEditor } from '@/categories/useCategoryEditor'
 // Цвета — текущей темы приложения, как в «Первом шаге» (FM-39): переход на новый дизайн не входит в задачу.
 // Отклонение от макета: кнопка «Сохранить» высотой 50px (h-control, как все основные кнопки приложения),
 // а не 38px. Окно открывается поверх главной, закрывается крестиком и Escape, фокус удерживается внутри.
+// Высота (FM-44): по макету 672px, но не выше экрана за вычетом полей подложки (2 × 2rem) — при многих статьях
+// прокручиваются только колонки, заголовок с крестиком и «Сохранить» остаются на месте. На экране ниже 540px
+// колонкам так осталось бы меньше строки — там окно растёт целиком и прокручивается с подложкой. Центрирует
+// окно не подложка (items-center уводила верх высокого окна за край, куда не прокрутить), а отступы auto:
+// когда окно выше экрана, они обнуляются, и окно прокручивается от своего верха.
+// TODO(FM-44): у `100dvh` нет запасного значения — браузер без dvh (Chrome/Edge < 108, Safari < 15.4) отбросит
+// max-h и min-h, и окно снова вырастет выше экрана. Сначала значение с `vh`, затем `supports-[height:100dvh]:`.
+// TODO(FM-44): минимальная высота 672px перешла с формы на панель — «Загрузка…» и ошибка загрузки теперь у
+// верхнего края высокой панели; растянуть их блоки (`flex-1 justify-center`).
+// TODO(FM-44): порог 540px — по высоте вьюпорта: браузер, который при экранной клавиатуре уменьшает layout
+// viewport (`interactive-widget=resizes-content`), будет переключать раскладку при фокусе в поле. Chrome Android
+// ≥108 и iOS Safari по умолчанию так не делают; проверить на устройстве.
+// TODO(FM-42): подложка и `my-auto` повторяют FirstStepDialog, у которого всё ещё `items-center` — вынести в
+// общий BaseDialog.
 const emit = defineEmits<{
   /** Создана хотя бы одна статья — таблицу «Структура бюджета» нужно перезапросить. */
   saved: []
@@ -27,6 +41,7 @@ const panel = ref<HTMLElement | null>(null)
 const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null
 
 const FOCUSABLE = 'input:not([disabled]), button:not([disabled])'
+const NEW_ROW = '[data-testid="new-row"]'
 
 // TODO(FM-42): удержание фокуса и inert на #app повторяют FirstStepDialog — вынести общий BaseDialog.
 function focusables(): HTMLElement[] {
@@ -85,10 +100,36 @@ async function onSubmit(): Promise<void> {
     return
   }
   // Окно остаётся открытым: строка с фокусом могла сохраниться и уйти из DOM, а кнопка на время запроса
-  // становилась disabled — без фокуса внутри панели не работают Escape и удержание Tab
-  // TODO(FM-42): ставить фокус в первое поле с ошибкой, а не в первый элемент окна (крестик).
+  // становилась disabled — без фокуса внутри панели не работают Escape и удержание Tab.
   await nextTick()
-  keepFocusInside()
+  // Повторное нажатие во время сохранения: save() сразу вернул null, фокус не трогаем
+  if (!saving.value) focusError()
+}
+
+// Фокус после неудачного «Сохранить» (FM-44): при многих статьях строка с ошибкой может быть вне видимой части
+// колонок, а на низком экране фокус на крестике уводит прокрутку к верху, прочь от сообщения у «Сохранить».
+// Ошибка у строки — фокус в её поле с ошибкой (или в первое, если ошибка строки целиком, как лимит), и строка
+// с текстом ошибки докручивается в видимую часть: focus() не прокручивает уже видимое поле. Общая ошибка (сеть,
+// 5xx) — фокус на «Сохранить», рядом с её сообщением.
+// NOTE(FM-44): при ошибке строки и общей ошибке в одном сохранении фокус — в строку; ниже 540px сообщение у
+// «Сохранить» тогда может оказаться за нижним краем (скринридер объявит его через role="alert").
+// TODO(FM-44): строка ищется по DOM дочерних компонентов (`data-testid="new-row"`, `aria-invalid`, `role="alert"`
+// из ErrorMessage) — при смене их разметки фокус тихо уйдёт на «Сохранить». Искать по состоянию
+// (`rows[].errors`/`.message`) и звать `focusError()` строки через `defineExpose`.
+function focusError(): void {
+  const rows = panel.value ? [...panel.value.querySelectorAll<HTMLElement>(NEW_ROW)] : []
+  const row = rows.find((item) => item.querySelector('[aria-invalid="true"], [role="alert"]'))
+  if (row) {
+    const field =
+      row.querySelector<HTMLElement>('[aria-invalid="true"]') ??
+      row.querySelector<HTMLElement>('input')
+    field?.focus()
+    row.scrollIntoView({ block: 'nearest' })
+    return
+  }
+  const submit = panel.value?.querySelector<HTMLElement>('button[type="submit"]')
+  if (submit) submit.focus()
+  else keepFocusInside()
 }
 
 onMounted(async () => {
@@ -107,14 +148,14 @@ onBeforeUnmount(() => {
 <template>
   <Teleport to="body">
     <div
-      class="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-ink/40 px-4 py-8 font-sans text-ink backdrop-blur-sm sm:items-center"
+      class="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-ink/40 px-4 py-8 font-sans text-ink backdrop-blur-sm"
     >
       <div
         ref="panel"
         role="dialog"
         aria-modal="true"
         :aria-labelledby="titleId"
-        class="relative w-full max-w-[1535px] rounded bg-surface-card px-4 pb-6 pt-8 shadow-xl sm:px-[65px] sm:pb-[27px] sm:pt-[46px]"
+        class="relative flex w-full max-w-[1535px] flex-col rounded bg-surface-card px-4 pb-6 pt-8 shadow-xl sm:px-[65px] sm:pb-[27px] sm:pt-[46px] sm:my-auto lg:min-h-[min(672px,calc(100dvh-4rem))] [@media(min-height:540px)]:max-h-[calc(100dvh-4rem)]"
         @keydown="onKeydown"
       >
         <button
@@ -144,11 +185,19 @@ onBeforeUnmount(() => {
         <!-- novalidate: проверку делаем сами и показываем свои сообщения -->
         <form
           v-else
-          class="mt-8 flex flex-col gap-8 sm:mt-[31px] lg:min-h-[521px]"
+          class="mt-8 flex min-h-0 flex-1 flex-col gap-8 sm:mt-[31px]"
           novalidate
           @submit.prevent="onSubmit"
         >
-          <div class="grid gap-8 lg:grid-cols-2 lg:gap-[65px]">
+          <!-- Отступ 4px внутри прокрутки (и такой же отрицательный снаружи): иначе overflow обрезает рамку
+               фокуса у полей по краям. relative: иначе sr-only подписи (absolute) позиционируются от панели,
+               выходят из прокрутки и растягивают подложку.
+               TODO(FM-44): absolute-подпись лежит в ячейке CategoryColumn — надёжнее `relative` в классе `cell`
+               колонки, тогда окну не нужно знать разметку дочернего компонента. -->
+          <div
+            data-testid="category-editor-scroll"
+            class="relative -m-1 grid min-h-0 flex-1 content-start gap-8 overflow-y-auto p-1 lg:grid-cols-2 lg:gap-[65px]"
+          >
             <CategoryColumn
               :column="columns.outcome"
               title="Расходы"
@@ -166,7 +215,7 @@ onBeforeUnmount(() => {
               @update="updateRow"
             />
           </div>
-          <div class="mx-auto mt-auto flex w-full max-w-[671px] flex-col gap-3">
+          <div class="mx-auto flex w-full max-w-[671px] shrink-0 flex-col gap-3">
             <ErrorMessage data-testid="form-error" :message="message" />
             <BaseButton type="submit" class="w-full" :loading="saving">Сохранить</BaseButton>
           </div>
