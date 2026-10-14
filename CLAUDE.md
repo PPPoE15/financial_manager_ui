@@ -124,7 +124,9 @@ Vue 3 + TypeScript + Vite SPA («Финансовый менеджер»), Pinia
   never changed (columns are fixed). «Сохранить» validates (`categories/validation.ts`, same rules as the
   contract; a name already taken in the column — by a category keeping its name (even with a changed
   plan/comment), a new row, then a renamed category —
-  is «Такая статья уже есть» on the later claimant), then sends in parallel one `PATCH` per changed category
+  is «Такая статья уже есть» on the later claimant; a name swap A ↔ B is refused — it can't pass the server's
+  unique name in one save), then sends in parallel one `PATCH` per changed category (a request for a name
+  that another rename frees waits for that `PATCH`)
   (rows whose values match the saved ones are skipped; cleared plan/comment → `null`) and one `POST` per
   filled new row: saved categories take the server's values, created rows move into the list, failed rows
   keep their input and error (`FM-409101` duplicate, `FM-409103` limit, 404 «статья удалена», 422 by field),

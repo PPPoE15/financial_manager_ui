@@ -663,6 +663,77 @@ describe('CategoryEditorDialog', () => {
       expect(existingRow(col, 1).text()).not.toContain('Такая статья уже есть')
     })
 
+    it('цепочка переименований (ЖКХ → Квартира, Продукты → ЖКХ): PATCH на занятое название ждёт освобождения', async () => {
+      const outcome = [category(), category({ name: 'ЖКХ', money_plan: 11500, description: null })]
+      const w = await mountDialog({ outcome })
+      const col = column('Расходы')
+      const freeing = deferred<Category>()
+      update.mockImplementation((uid, body) =>
+        uid === outcome[1]!.uid ? freeing.promise : patched(outcome[0]!)(uid, body),
+      )
+      await editRow(col, 0, { name: 'ЖКХ' })
+      await editRow(col, 1, { name: 'Квартира' })
+
+      await page().get('form').trigger('submit')
+      await flushPromises()
+
+      // Сначала уходит только переименование, освобождающее «ЖКХ»
+      expect(update.mock.calls.map(([uid]) => uid)).toEqual([outcome[1]!.uid])
+      freeing.resolve({ ...outcome[1]!, name: 'Квартира' })
+      await flushPromises()
+      expect(update).toHaveBeenLastCalledWith(outcome[0]!.uid, { name: 'ЖКХ' })
+      expect(w.emitted('close')).toHaveLength(1)
+    })
+
+    it('новая строка с прежним названием переименованной статьи: POST ждёт её PATCH', async () => {
+      const outcome = [category()]
+      await mountDialog({ outcome })
+      const col = column('Расходы')
+      const freeing = deferred<Category>()
+      update.mockReturnValue(freeing.promise)
+      await editRow(col, 0, { name: 'Еда' })
+      await fillRow(col, 0, { name: 'Продукты' })
+
+      await page().get('form').trigger('submit')
+      await flushPromises()
+
+      expect(create).not.toHaveBeenCalled()
+      freeing.resolve({ ...outcome[0]!, name: 'Еда' })
+      await flushPromises()
+      expect(create).toHaveBeenCalledWith(expect.objectContaining({ name: 'Продукты' }))
+    })
+
+    it('если освобождающее переименование не сохранилось, зависящий от него запрос не уходит', async () => {
+      const outcome = [category()]
+      const w = await mountDialog({ outcome })
+      const col = column('Расходы')
+      update.mockRejectedValue(httpError(422, { validation: [{ field: 'name' }] }))
+      await editRow(col, 0, { name: 'Еда' })
+      await fillRow(col, 0, { name: 'Продукты' })
+
+      await save()
+
+      expect(create).not.toHaveBeenCalled()
+      expect(newRows(col)[0]!.text()).toContain('Такая статья уже есть')
+      expect(w.emitted('close')).toBeUndefined()
+    })
+
+    it('обмен названиями двух статей — ошибка у обеих до отправки: за одно сохранение его не сделать', async () => {
+      await mountDialog()
+      const col = column('Расходы')
+      await editRow(col, 0, { name: 'ЖКХ' })
+      await editRow(col, 1, { name: 'Продукты' })
+
+      await save()
+
+      expect(update).not.toHaveBeenCalled()
+      for (const index of [0, 1]) {
+        expect(existingRow(col, index).text()).toContain(
+          'Названия не обменять за одно сохранение — сначала переименуйте одну из статей во временное название',
+        )
+      }
+    })
+
     it('название другой колонки не дубликат', async () => {
       await mountDialog()
       await editRow(column('Расходы'), 0, { name: 'Зарплата' })

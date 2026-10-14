@@ -36,6 +36,8 @@ export interface EditorColumn {
 export const DUPLICATE_ERROR = 'Такая статья уже есть'
 export const LIMIT_ERROR = `Достигнут лимит в ${MAX_CATEGORIES} статей`
 export const NOT_FOUND_ERROR = 'Статья удалена. Закройте окно и откройте его снова'
+export const SWAP_ERROR =
+  'Названия не обменять за одно сохранение — сначала переименуйте одну из статей во временное название'
 
 const DUPLICATE_CODE = 'FM-409101'
 const LIMIT_CODE = 'FM-409103'
@@ -175,7 +177,24 @@ function changedFields(category: Category, values: RowValues): CategoryUpdate {
 /** Запрос «Сохранить»: создание статьи из новой строки или изменение существующей. */
 type SaveRequest =
   | { kind: 'create'; column: EditorColumn; row: EditorRow; body: CategoryCreate }
-  | { kind: 'update'; row: CategoryRow; body: CategoryUpdate }
+  | { kind: 'update'; column: EditorColumn; row: CategoryRow; body: CategoryUpdate }
+
+/**
+ * Переименование в том же сохранении, которое освобождает нужное запросу название (на сервере его ещё носит
+ * другая статья колонки), или `undefined`. Названия в колонке уникальны, поэтому такой запрос не больше одного.
+ */
+function findHolder(request: SaveRequest, requests: SaveRequest[]): SaveRequest | undefined {
+  const name = request.body.name
+  if (name === undefined) return undefined
+  return requests.find(
+    (other) =>
+      other !== request &&
+      other.kind === 'update' &&
+      other.column === request.column &&
+      other.body.name !== undefined &&
+      other.row.category.name === name,
+  )
+}
 
 export interface SaveResult {
   /** Сколько статей создано и изменено. */
@@ -281,10 +300,8 @@ export function useCategoryEditor(): CategoryEditor {
       // Дубликат — у того, кто занял название позже: сначала статьи со своим прежним названием (даже если у них
       // изменены план или комментарий), затем новые строки, затем переименованные статьи — ошибку получает
       // переименование, а не строка, совпавшая с ним
-      // NOTE(FM-46): клиент проверяет только итоговые названия. Обмен названиями (A ↔ B), цепочка (B → C, A → B) или
-      // новая строка с названием, которое освобождает переименование (A → Y и новая «A»), проходят проверку, но
-      // параллельные запросы получат 409 `FM-409101` в зависимости от порядка прихода на сервер — у таких строк
-      // «Такая статья уже есть», повторное «Сохранить» проходит.
+      // Здесь проверяются итоговые названия; порядок запросов для названий, которые освобождают переименования
+      // (цепочка B → C, A → B; новая «A» при A → Y), — в run() ниже, обмен (A ↔ B) — сразу после проверки.
       const takenNames = new Set<string>()
       const keepsName = (row: CategoryRow) => row.name.trim() === row.category.name
       const ordered: (CategoryRow | EditorRow)[] = [
@@ -309,15 +326,53 @@ export function useCategoryEditor(): CategoryEditor {
           })
         else {
           const body = changedFields(existing.category, values)
-          if (Object.keys(body).length) requests.push({ kind: 'update', row: existing, body })
+          if (Object.keys(body).length)
+            requests.push({ kind: 'update', column, row: existing, body })
         }
       }
     }
     if (invalid) return null
 
+    // Запрос на название, которое освобождает переименование другой статьи, ждёт это переименование: параллельно
+    // сервер ответил бы 409 `FM-409101` или нет — в зависимости от порядка прихода. Остальные уходят сразу.
+    const holders = new Map(requests.map((request) => [request, findHolder(request, requests)]))
+    // Обмен названиями (цикл A → B → … → A) так не развязать — каждый ждёт другого; уникальность названий на
+    // сервере не даёт сделать его за одно сохранение
+    for (const request of requests) {
+      const seen = new Set<SaveRequest>()
+      let holder = holders.get(request)
+      while (holder && holder !== request && !seen.has(holder)) {
+        seen.add(holder)
+        holder = holders.get(holder)
+      }
+      if (holder === request) {
+        request.row.errors = { name: SWAP_ERROR }
+        invalid = true
+      }
+    }
+    if (invalid) return null
+
+    const runs = new Map<SaveRequest, Promise<boolean>>()
+    function run(request: SaveRequest): Promise<boolean> {
+      let result = runs.get(request)
+      if (!result) {
+        const holder = holders.get(request)
+        result = (async () => {
+          if (holder && !(await run(holder))) {
+            // Название так и осталось за другой статьёй
+            request.row.errors = { name: DUPLICATE_ERROR }
+            return false
+          }
+          return saveRow(request)
+        })()
+        runs.set(request, result)
+      }
+      return result
+    }
+
     saving.value = true
     try {
-      const results = await Promise.all(requests.map(saveRow))
+      const results = await Promise.all(requests.map(run))
       const saved = results.filter(Boolean).length
       return { saved, complete: saved === results.length }
     } finally {
