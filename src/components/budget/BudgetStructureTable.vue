@@ -8,11 +8,13 @@ import {
 } from '@/components/budget/columns'
 import type { BudgetStructure } from '@/types/budget'
 
-// Таблица «Структура бюджета» по макету Figma Frame 8 (узел 116:134 «Колонки», 500px по высоте). В карточке
+// Таблица «Структура бюджета» по макету Figma «Новый дизайн» (Главная 230:422, группа «Колонки», 499px по высоте). В карточке
 // 863px видны «Категория», «План», «Среднее» и три месяца — остальные месяцы прокручиваются по горизонтали
 // внутри обёртки (закреплённые колонки — в columns.ts). По высоте (FM-43): не ниже половины макета (250px,
 // при малом числе статей под строками остаётся пустое место) и не выше макета (500px) — дальше статьи
 // прокручиваются по вертикали, а «Сумма» прилипает к низу.
+// NOTE(FM-58): поверхность прокрутки и закреплённые ячейки непрозрачны: месяцы и строки
+// не просвечивают друг через друга при горизонтальной/вертикальной прокрутке (FM-43).
 // TODO(FM-28): в макете «Среднее» и перерасход месяца раскрашены относительно плана (зелёный /
 // жёлтый / красный) — это сравнение плана и факта, отдельная история этапа 2; пока суммы без цвета.
 defineProps<{ data: BudgetStructure }>()
@@ -22,27 +24,36 @@ defineProps<{ data: BudgetStructure }>()
   <!-- relative: иначе sr-only подписи (absolute) скрытых за прокруткой месяцев расширяют всю страницу
        TODO(FM-43): при 2–3 статьях горизонтальная полоса прокрутки — внизу 250px-блока, оторвана от таблицы:
        min-h ставить на внешний блок, а overflow — на внутренний.
-       TODO(FM-43): у области прокрутки нет tabindex="0", role="region" и aria-label — в Safari с клавиатуры
-       не прокрутить ни месяцы, ни статьи ниже 500px. -->
-  <div data-testid="budget-table-scroll" class="relative max-h-[500px] min-h-[250px] overflow-auto">
+       FM-58: область фокусируется с клавиатуры, стрелки прокручивают месяцы и статьи. -->
+  <div
+    data-testid="budget-table-scroll"
+    tabindex="0"
+    role="region"
+    aria-label="Структура бюджета по месяцам"
+    class="relative max-h-[500px] min-h-[250px] overflow-auto rounded bg-surface-card focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
+  >
     <table
-      class="w-max border-separate border-spacing-0 whitespace-nowrap text-center font-brand text-sm font-medium tracking-normal text-ink-secondary"
+      class="w-max border-separate border-spacing-0 whitespace-nowrap text-center font-sans text-caption font-medium tabular-nums tracking-normal text-ink"
     >
-      <thead class="text-base font-bold text-primary">
+      <thead class="text-sm font-semibold text-ink">
         <tr>
           <th
             scope="col"
-            class="h-8 align-top"
+            class="h-9 border-b border-ink/30 align-top"
             :class="[COLUMN_CLASS.category, LAYER_CLASS.row.category]"
           >
             Категория
           </th>
-          <th scope="col" class="h-8 align-top" :class="[COLUMN_CLASS.plan, LAYER_CLASS.row.plan]">
+          <th
+            scope="col"
+            class="h-9 border-b border-ink/30 align-top"
+            :class="[COLUMN_CLASS.plan, LAYER_CLASS.row.plan]"
+          >
             План
           </th>
           <th
             scope="col"
-            class="h-8 align-top"
+            class="h-9 border-b border-ink/30 align-top"
             :class="[COLUMN_CLASS.average, LAYER_CLASS.row.average]"
           >
             Среднее
@@ -51,7 +62,7 @@ defineProps<{ data: BudgetStructure }>()
             v-for="(month, index) in MONTH_NAMES"
             :key="month"
             scope="col"
-            class="h-8 align-top"
+            class="h-9 border-b border-ink/30 align-top"
             :class="monthColumnClass(index)"
           >
             {{ month }}

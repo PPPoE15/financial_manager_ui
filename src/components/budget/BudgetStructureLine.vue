@@ -42,7 +42,7 @@ const layer = computed(() => (props.total ? LAYER_CLASS.total : LAYER_CLASS.row)
 </script>
 
 <template>
-  <tr class="h-[34px]" :class="total && 'font-bold'">
+  <tr class="h-[34px] leading-5" :class="total && 'font-bold'">
     <th scope="row" :class="[COLUMN_CLASS.category, layer.category, !total && 'font-medium']">
       <span :class="CATEGORY_NAME_CLASS" :title="total ? undefined : name">
         <template v-if="shortName">

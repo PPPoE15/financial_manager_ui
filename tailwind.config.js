@@ -5,6 +5,8 @@ export default {
   theme: {
     extend: {
       colors: {
+        // FM-58: Главная, Rectangle 46 (230:465), непрозрачность задаётся карточкой.
+        'budget-panel': '#010D17',
         // FM-55: совместимые имена для экранов, переносимых в FM-56…FM-60.
         primary: {
           DEFAULT: '#E5EAFF', light: '#FFFFFF', dark: '#1E2532',
