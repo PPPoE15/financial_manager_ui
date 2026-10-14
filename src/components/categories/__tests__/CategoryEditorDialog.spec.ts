@@ -637,6 +637,32 @@ describe('CategoryEditorDialog', () => {
       },
     )
 
+    it('статья с изменённым только планом держит своё название: дубликат — у новой строки', async () => {
+      await mountDialog()
+      const col = column('Расходы')
+      await editRow(col, 0, { plan: '5000' })
+      await fillRow(col, 0, { name: 'Продукты' })
+
+      await save()
+
+      expect(update).not.toHaveBeenCalled()
+      expect(existingRow(col, 0).text()).not.toContain('Такая статья уже есть')
+      expect(newRows(col)[0]!.text()).toContain('Такая статья уже есть')
+    })
+
+    it('переименование в название статьи с изменённым планом — ошибка у переименованной', async () => {
+      await mountDialog()
+      const col = column('Расходы')
+      // Переименованная — выше в списке, чем статья, чьё название она заняла
+      await editRow(col, 0, { name: 'ЖКХ' })
+      await editRow(col, 1, { plan: '12000' })
+
+      await save()
+
+      expect(existingRow(col, 0).text()).toContain('Такая статья уже есть')
+      expect(existingRow(col, 1).text()).not.toContain('Такая статья уже есть')
+    })
+
     it('название другой колонки не дубликат', async () => {
       await mountDialog()
       await editRow(column('Расходы'), 0, { name: 'Зарплата' })

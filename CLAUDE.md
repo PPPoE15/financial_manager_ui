@@ -122,7 +122,8 @@ Vue 3 + TypeScript + Vite SPA («Финансовый менеджер»), Pinia
   «4 990») and rows for new ones — a new empty row appears as soon as the last one is touched. Both kinds
   render as `CategoryRow.vue` (three inputs, `data-testid` `category-row` / `new-row`); the category type is
   never changed (columns are fixed). «Сохранить» validates (`categories/validation.ts`, same rules as the
-  contract; a name already taken in the column — by an untouched category, a new row, then a renamed one —
+  contract; a name already taken in the column — by a category keeping its name (even with a changed
+  plan/comment), a new row, then a renamed category —
   is «Такая статья уже есть» on the later claimant), then sends in parallel one `PATCH` per changed category
   (rows whose values match the saved ones are skipped; cleared plan/comment → `null`) and one `POST` per
   filled new row: saved categories take the server's values, created rows move into the list, failed rows

@@ -274,32 +274,38 @@ export function useCategoryEditor(): CategoryEditor {
         row.message = null
         row.errors = {}
       }
-      // Дубликат — у того, кто занял название позже: сначала нетронутые статьи, затем новые строки, затем
-      // изменённые статьи — ошибку получает переименование, а не строка, совпавшая с ним
-      // NOTE(FM-46): обмен названиями двух статей проходит проверку, но параллельные PATCH получат 409 — у одной
-      // или обеих строк «Такая статья уже есть»; обмен делается в два сохранения через промежуточное название.
-      const changed = column.categories.filter((row) => !isUntouched(row))
-      const takenNames = new Set(
-        column.categories.filter(isUntouched).map((row) => row.category.name),
-      )
-      for (const row of column.rows) {
-        if (isBlank(row)) continue
+      // Дубликат — у того, кто занял название позже: сначала статьи со своим прежним названием (даже если у них
+      // изменены план или комментарий), затем новые строки, затем переименованные статьи — ошибку получает
+      // переименование, а не строка, совпавшая с ним
+      // NOTE(FM-46): клиент проверяет только итоговые названия. Обмен названиями (A ↔ B), цепочка (B → C, A → B) или
+      // новая строка с названием, которое освобождает переименование (A → Y и новая «A»), проходят проверку, но
+      // параллельные запросы получат 409 `FM-409101` в зависимости от порядка прихода на сервер — у таких строк
+      // «Такая статья уже есть», повторное «Сохранить» проходит.
+      const takenNames = new Set<string>()
+      const keepsName = (row: CategoryRow) => row.name.trim() === row.category.name
+      const ordered: (CategoryRow | EditorRow)[] = [
+        ...column.categories.filter(keepsName),
+        ...column.rows,
+        ...column.categories.filter((row) => !keepsName(row)),
+      ]
+      for (const row of ordered) {
+        const existing = 'category' in row ? row : null
+        if (existing ? isUntouched(existing) : isBlank(row)) {
+          if (existing) takenNames.add(existing.category.name)
+          continue
+        }
         const values = validateRow(row, takenNames)
         if (!values) invalid = true
-        else
+        else if (!existing)
           requests.push({
             kind: 'create',
             column,
             row,
             body: { ...values, category_type: column.type },
           })
-      }
-      for (const row of changed) {
-        const values = validateRow(row, takenNames)
-        if (!values) invalid = true
         else {
-          const body = changedFields(row.category, values)
-          if (Object.keys(body).length) requests.push({ kind: 'update', row, body })
+          const body = changedFields(existing.category, values)
+          if (Object.keys(body).length) requests.push({ kind: 'update', row: existing, body })
         }
       }
     }
