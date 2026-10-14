@@ -22,6 +22,8 @@ export interface EditorRow {
 }
 
 /** Строка существующей статьи: поля для правки и статья, как она сохранена на сервере. */
+// TODO(FM-46): тип называется как компонент CategoryRow.vue, который рисует и новые строки, — переименовать
+// (например, в ExistingRow), иначе импорт обоих в один файл потребует алиаса.
 export interface CategoryRow extends EditorRow {
   category: Category
 }
@@ -85,6 +87,8 @@ function categoryRow(category: Category): CategoryRow {
 }
 
 /** Поля строки не трогали (или вернули как было) — проверять и отправлять нечего. */
+// TODO(FM-46): исходные значения полей пересчитываются через formatMoney при каждом «Сохранить» — хранить их
+// в строке, созданной categoryRow() (заодно уйдёт зависимость от формата formatMoney, см. TODO выше).
 function isUntouched(row: CategoryRow): boolean {
   const initial = fieldValues(row.category)
   return (['name', 'plan', 'description'] as const).every((field) => row[field] === initial[field])
@@ -315,6 +319,9 @@ export function useCategoryEditor(): CategoryEditor {
       // Здесь проверяются итоговые названия; порядок запросов для названий, которые освобождают переименования
       // (цепочка B → C, A → B; новая «A» при A → Y), — в run() ниже, обмен (A ↔ B) — сразу после проверки.
       const takenNames = new Set<string>()
+      // TODO(FM-46): сохранённое название проверяется клиентскими правилами и при правке только плана: trim() в JS и
+      // strip() в Python расходятся (U+FEFF, U+0085) — у статьи, созданной через API с таким краем названия, правка
+      // плана отправит и `name`. Не проверять и не отправлять название, сырое значение которого равно category.name.
       const keepsName = (row: CategoryRow) => row.name.trim() === row.category.name
       const ordered: (CategoryRow | EditorRow)[] = [
         ...column.categories.filter(keepsName),
@@ -347,6 +354,11 @@ export function useCategoryEditor(): CategoryEditor {
 
     // Запрос на название, которое освобождает переименование другой статьи, ждёт это переименование: параллельно
     // сервер ответил бы 409 `FM-409101` или нет — в зависимости от порядка прихода. Остальные уходят сразу.
+    // NOTE(FM-46): порядок запросов и отказ при обмене — обход уникальности названий без пакетного эндпоинта;
+    // убрать его (и сделать обмен возможным) может пакетный PATCH или отложенная (DEFERRABLE) проверка уникальности
+    // на сервере — это изменение контракта.
+    // TODO(FM-46): тесты покрывают обмен двух статей; цикла из трёх (A → B → C → A) и цепочки, входящей в цикл
+    // (C → A при A ↔ B), в тестах нет.
     const holders = new Map(requests.map((request) => [request, findHolder(request, requests)]))
     // Обмен названиями (цикл A → B → … → A) так не развязать — каждый ждёт другого; уникальность названий на
     // сервере не даёт сделать его за одно сохранение
