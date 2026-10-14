@@ -113,12 +113,16 @@ describe('BudgetStructureTable', () => {
   })
 
   it('итоговую строку «Сумма» выделяет жирным — и название, и суммы', () => {
-    const total = mountTable().get('tfoot tr')
+    // Жирность задаёт строка, ячейки её наследуют — у них не должно быть своего начертания
+    const wrapper = mountTable()
+    const total = wrapper.get('tfoot tr')
 
     expect(total.classes()).toContain('font-bold')
-    expect(total.get('th').classes()).not.toContain('font-medium')
-    for (const cell of mountTable().findAll('tbody tr')) {
-      expect(cell.classes()).not.toContain('font-bold')
+    for (const cell of total.findAll('th, td')) {
+      expect(cell.classes().filter((name) => /^font-(?!brand|sans)/.test(name))).toEqual([])
+    }
+    for (const row of wrapper.findAll('tbody tr')) {
+      expect(row.classes()).not.toContain('font-bold')
     }
   })
 

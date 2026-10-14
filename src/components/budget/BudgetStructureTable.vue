@@ -19,7 +19,11 @@ defineProps<{ data: BudgetStructure }>()
 </script>
 
 <template>
-  <!-- relative: иначе sr-only подписи (absolute) скрытых за прокруткой месяцев расширяют всю страницу -->
+  <!-- relative: иначе sr-only подписи (absolute) скрытых за прокруткой месяцев расширяют всю страницу
+       TODO(FM-43): при 2–3 статьях горизонтальная полоса прокрутки — внизу 250px-блока, оторвана от таблицы:
+       min-h ставить на внешний блок, а overflow — на внутренний.
+       TODO(FM-43): у области прокрутки нет tabindex="0", role="region" и aria-label — в Safari с клавиатуры
+       не прокрутить ни месяцы, ни статьи ниже 500px. -->
   <div data-testid="budget-table-scroll" class="relative max-h-[500px] min-h-[250px] overflow-auto">
     <table
       class="w-max border-separate border-spacing-0 whitespace-nowrap text-center font-brand text-sm font-medium tracking-normal text-ink-secondary"
