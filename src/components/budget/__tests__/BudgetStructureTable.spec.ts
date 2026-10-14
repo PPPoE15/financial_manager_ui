@@ -44,7 +44,7 @@ describe('BudgetStructureTable', () => {
     expect(headers).toEqual(['Категория', 'План', 'Среднее', ...MONTHS])
   })
 
-  it('выводит строку на каждую статью и итоговую строку «сумма»', () => {
+  it('выводит строку на каждую статью и итоговую строку «Сумма»', () => {
     const wrapper = mountTable()
     const bodyRows = wrapper.findAll('tbody tr')
     const footRows = wrapper.findAll('tfoot tr')
@@ -52,7 +52,7 @@ describe('BudgetStructureTable', () => {
     expect(bodyRows.map((row) => row.get('th').text())).toEqual(['еда вне дома', 'подарки'])
     expect(footRows).toHaveLength(1)
     expect(cells(footRows[0]!).slice(0, 6)).toEqual([
-      'сумма',
+      'Сумма',
       `5${NBSP}000${NBSP}₽`,
       `5${NBSP}000${NBSP}₽`,
       `5${NBSP}000${NBSP}₽`,
@@ -112,15 +112,64 @@ describe('BudgetStructureTable', () => {
     expect(tds[3]!.text()).toContain('месяц ещё не наступил')
   })
 
+  it('итоговую строку «Сумма» выделяет жирным — и название, и суммы', () => {
+    const total = mountTable().get('tfoot tr')
+
+    expect(total.classes()).toContain('font-bold')
+    expect(total.get('th').classes()).not.toContain('font-medium')
+    for (const cell of mountTable().findAll('tbody tr')) {
+      expect(cell.classes()).not.toContain('font-bold')
+    }
+  })
+
   it('закрепляет колонку «Категория» при горизонтальной прокрутке', () => {
     const wrapper = mountTable()
 
-    expect(wrapper.get('[data-testid="budget-table-scroll"]').classes()).toContain(
-      'overflow-x-auto',
-    )
+    expect(wrapper.get('[data-testid="budget-table-scroll"]').classes()).toContain('overflow-auto')
     for (const cell of wrapper.findAll('tr > :first-child')) {
       expect(cell.classes()).toEqual(expect.arrayContaining(['sticky', 'left-0']))
     }
+  })
+
+  it('на широком экране закрепляет и «План» со «Средним»: прокручиваются только месяцы', () => {
+    // Отступы слева — сумма ширин колонок перед ячейкой, поэтому ширина «Категории» фиксированная
+    for (const row of mountTable().findAll('tr')) {
+      const [category, plan, average] = row.findAll('th, td')
+      expect(category!.classes()).toEqual(
+        expect.arrayContaining(['sm:w-[241px]', 'sm:min-w-[241px]']),
+      )
+      expect(plan!.classes()).toEqual(
+        expect.arrayContaining(['sm:sticky', 'sm:left-[241px]', 'w-[115px]', 'bg-surface-card']),
+      )
+      expect(average!.classes()).toEqual(
+        expect.arrayContaining(['sm:sticky', 'sm:left-[356px]', 'w-[138px]', 'bg-surface-card']),
+      )
+    }
+  })
+
+  it('разделитель перед месяцами — у закреплённого «Среднего», а не у прокручиваемого января', () => {
+    const row = mountTable().get('tbody tr')
+    const [, , average, january] = row.findAll('th, td')
+
+    expect(average!.classes()).toContain('border-r-[0.5px]')
+    expect(january!.classes().some((name) => name.startsWith('border-l'))).toBe(false)
+  })
+
+  it('«Сумма» прилипает к низу таблицы при вертикальной прокрутке', () => {
+    const cellsOfTotal = mountTable().findAll('tfoot th, tfoot td')
+
+    expect(cellsOfTotal).toHaveLength(15)
+    for (const cell of cellsOfTotal) {
+      expect(cell.classes()).toEqual(
+        expect.arrayContaining(['sticky', 'bottom-0', 'bg-surface-card']),
+      )
+    }
+  })
+
+  it('по высоте не меньше половины таблицы макета (250px) и не больше макета (500px)', () => {
+    const scroll = mountTable().get('[data-testid="budget-table-scroll"]')
+
+    expect(scroll.classes()).toEqual(expect.arrayContaining(['min-h-[250px]', 'max-h-[500px]']))
   })
 
   it('прокрутка таблицы — блок позиционирования для sr-only подписей', () => {
