@@ -30,11 +30,19 @@ const inputAttrs = computed(() =>
 const generatedId = useId()
 const inputId = computed(() => props.id ?? generatedId)
 const errorId = computed(() => `${inputId.value}-error`)
+// useAttrs не реактивен: читаем актуальные атрибуты при каждом рендере.
+function describedBy(): string | undefined {
+  return (
+    [attrs['aria-describedby'], props.error ? errorId.value : undefined]
+      .filter(Boolean)
+      .join(' ') || undefined
+  )
+}
 </script>
 
 <template>
-  <div class="flex flex-col gap-[11px]" v-bind="rootAttrs">
-    <label :for="inputId" class="text-base font-medium leading-5 text-ink">{{ label }}</label>
+  <div class="flex flex-col gap-2" v-bind="rootAttrs">
+    <label :for="inputId" class="text-caption font-medium leading-5 text-ink">{{ label }}</label>
     <input
       :id="inputId"
       v-model="model"
@@ -42,9 +50,9 @@ const errorId = computed(() => `${inputId.value}-error`)
       :type="type"
       :placeholder="placeholder"
       :aria-invalid="error ? 'true' : undefined"
-      :aria-describedby="error ? errorId : undefined"
-      class="h-control w-full rounded border bg-surface-card px-[18px] text-base tracking-normal text-ink outline-none placeholder:text-ink-placeholder focus-visible:outline-2 focus-visible:outline-offset-0 focus-visible:outline-primary disabled:cursor-not-allowed disabled:opacity-50"
-      :class="error ? 'border-danger' : 'border-transparent'"
+      :aria-describedby="describedBy()"
+      class="h-control min-w-0 w-full rounded border bg-field px-3 text-base tracking-normal text-ink outline-none transition-colors placeholder:text-ink-placeholder enabled:hover:bg-field-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus disabled:cursor-not-allowed disabled:bg-surface-muted disabled:text-ink-muted sm:text-sm"
+      :class="error ? 'border-danger' : 'border-field-border'"
     />
     <ErrorMessage :id="errorId" :message="error" />
   </div>

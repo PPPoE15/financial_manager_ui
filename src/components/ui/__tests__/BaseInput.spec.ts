@@ -71,3 +71,14 @@ describe('BaseInput', () => {
     expect(input.attributes('name')).toBe('password')
   })
 })
+
+// FM-55: подсказка и ошибка должны быть доступны одновременно.
+it('сохраняет внешнюю подсказку при появлении и снятии ошибки', async () => {
+  const wrapper = mount(BaseInput, {
+    props: { label: 'Пароль', id: 'password', error: 'Введите пароль' },
+    attrs: { 'aria-describedby': 'password-hint' },
+  })
+  expect(wrapper.get('input').attributes('aria-describedby')).toBe('password-hint password-error')
+  await wrapper.setProps({ error: null })
+  expect(wrapper.get('input').attributes('aria-describedby')).toBe('password-hint')
+})

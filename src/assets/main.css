@@ -1,17 +1,32 @@
-@import '@fontsource/onest/400.css';
-@import '@fontsource/onest/500.css';
-@import '@fontsource/onest/600.css';
-@import '@fontsource/onest/700.css';
-@import '@fontsource/onest/800.css';
-@import '@fontsource/manrope/500.css';
-@import '@fontsource/manrope/700.css';
-@import '@fontsource/manrope/800.css';
+@import '@fontsource/inter/cyrillic-400.css';
+@import '@fontsource/inter/cyrillic-500.css';
+@import '@fontsource/inter/cyrillic-600.css';
+@import '@fontsource/inter/cyrillic-700.css';
+@import '@fontsource/inter/latin-400.css';
+@import '@fontsource/inter/latin-500.css';
+@import '@fontsource/inter/latin-600.css';
+@import '@fontsource/inter/latin-700.css';
+
+@font-face {
+  font-family: 'Involve';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url('./fonts/Involve-Medium.ttf') format('truetype');
+}
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
+  :root {
+    color-scheme: dark;
+    --fm-landscape: url('./new-design/landscape.webp');
+    --fm-brand-logo: url('./new-design/logo.svg');
+    --fm-brand-mark: url('./new-design/brand-mark.svg');
+  }
+
   body {
     @apply bg-surface font-sans text-ink antialiased;
   }
