@@ -131,19 +131,30 @@ describe('BudgetStructureTable', () => {
     }
   })
 
-  it('на широком экране закрепляет и «План» со «Средним»: прокручиваются только месяцы', () => {
+  it('закрепляет и «План» со «Средним», когда месяцам хватает места: 768–1023px и от 1140px', () => {
+    // Ширина карточки: до lg — экран минус поля, с lg — ещё минус боковое меню (278px). На 640–767px и
+    // 1024–1139px три закреплённые колонки (453px) оставили бы месяцам меньше двух колонок.
     // Отступы слева — сумма ширин колонок перед ячейкой, поэтому ширина «Категории» фиксированная
+    const pinnedAt = (left: string) => [
+      'md:max-lg:sticky',
+      'min-[1140px]:sticky',
+      `md:max-lg:left-[${left}]`,
+      `min-[1140px]:left-[${left}]`,
+    ]
     for (const row of mountTable().findAll('tr')) {
       const [category, plan, average] = row.findAll('th, td')
       expect(category!.classes()).toEqual(
         expect.arrayContaining(['sm:w-[200px]', 'sm:min-w-[200px]']),
       )
       expect(plan!.classes()).toEqual(
-        expect.arrayContaining(['sm:sticky', 'sm:left-[200px]', 'w-[115px]', 'bg-surface-card']),
+        expect.arrayContaining([...pinnedAt('200px'), 'w-[115px]', 'bg-surface-card']),
       )
       expect(average!.classes()).toEqual(
-        expect.arrayContaining(['sm:sticky', 'sm:left-[315px]', 'w-[138px]', 'bg-surface-card']),
+        expect.arrayContaining([...pinnedAt('315px'), 'w-[138px]', 'bg-surface-card']),
       )
+      for (const cell of [plan!, average!]) {
+        expect(cell.classes().filter((name) => name.startsWith('sm:'))).toEqual([])
+      }
     }
   })
 

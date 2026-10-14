@@ -1,8 +1,10 @@
 // Колонки таблицы «Структура бюджета» по макету Figma Frame 8 (узел 116:134): «Категория» 217px
 // от x=383, «План» и «Среднее» по 115px, разделитель перед январём на x=853 (после «Среднего» 23px,
 // до января 24px), месяцы по 107px. При горизонтальной прокрутке «Категория», «План» и «Среднее»
-// закреплены, прокручиваются только месяцы (FM-43); ниже sm закреплена одна «Категория» — три колонки
-// на 360px не оставляют места месяцам.
+// закреплены, прокручиваются только месяцы (FM-43) — когда месяцам остаётся хотя бы ~200px. Карточка: до lg
+// шириной в экран минус поля (80px), с lg — ещё минус боковое меню (278px) и поля (138px). Три закреплённые
+// колонки — 453px, поэтому «План» и «Среднее» закреплены на 768–1023px и от 1140px; на 1024–1139px и уже
+// 768px закреплена одна «Категория».
 
 export const MONTH_NAMES = [
   'Январь',
@@ -26,10 +28,10 @@ export const MONTH_NAMES = [
 export const COLUMN_CLASS = {
   category:
     'sticky left-0 w-[136px] min-w-[136px] whitespace-normal bg-surface-card pl-3 text-left [overflow-wrap:anywhere] sm:w-[200px] sm:min-w-[200px] sm:pl-6',
-  plan: 'w-[115px] min-w-[115px] bg-surface-card sm:sticky sm:left-[200px]',
+  plan: 'w-[115px] min-w-[115px] bg-surface-card md:max-lg:sticky md:max-lg:left-[200px] min-[1140px]:sticky min-[1140px]:left-[200px]',
   // Разделитель перед месяцами — у закреплённого «Среднего», иначе он уезжал бы с январём
   average:
-    'w-[138px] min-w-[138px] border-r-[0.5px] border-ink-secondary bg-surface-card pr-[23px] sm:sticky sm:left-[315px]',
+    'w-[138px] min-w-[138px] border-r-[0.5px] border-ink-secondary bg-surface-card pr-[23px] md:max-lg:sticky md:max-lg:left-[315px] min-[1140px]:sticky min-[1140px]:left-[315px]',
   january: 'min-w-[131px] pl-6',
   month: 'min-w-[107px]',
 } as const
@@ -46,7 +48,7 @@ export const CATEGORY_NAME_CLASS = 'block sm:max-w-[176px] sm:truncate'
 /**
  * Слои ячеек по колонкам: для шапки и строк статей (`row`) и для итоговой строки (`total`). z-index — без
  * префикса ширины (у незакреплённой ячейки он ни на что не влияет), чтобы порядок слоёв был один на любом
- * экране: «Сумма» над «Планом» и «Средним» итога (ниже sm они уезжают под неё), те — над месяцами итога,
+ * экране: «Сумма» над «Планом» и «Средним» итога (незакреплённые, они уезжают под неё), те — над месяцами,
  * а вся итоговая строка — над строками статей, которые прокручиваются под неё.
  */
 export const LAYER_CLASS = {
