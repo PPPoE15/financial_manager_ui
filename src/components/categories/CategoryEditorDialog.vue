@@ -11,6 +11,9 @@ import { useCategoryEditor } from '@/categories/useCategoryEditor'
 // Цвета — текущей темы приложения, как в «Первом шаге» (FM-39): переход на новый дизайн не входит в задачу.
 // Отклонение от макета: кнопка «Сохранить» высотой 50px (h-control, как все основные кнопки приложения),
 // а не 38px. Окно открывается поверх главной, закрывается крестиком и Escape, фокус удерживается внутри.
+// Высота (FM-44): по макету 672px, но не выше экрана за вычетом полей подложки (2 × 2rem) — при многих статьях
+// прокручиваются только колонки, заголовок с крестиком и «Сохранить» остаются на месте. Без ограничения окно
+// выше экрана центрировалось подложкой, и его верх с заголовком уходил за край, куда не прокрутить.
 const emit = defineEmits<{
   /** Создана хотя бы одна статья — таблицу «Структура бюджета» нужно перезапросить. */
   saved: []
@@ -114,7 +117,7 @@ onBeforeUnmount(() => {
         role="dialog"
         aria-modal="true"
         :aria-labelledby="titleId"
-        class="relative w-full max-w-[1535px] rounded bg-surface-card px-4 pb-6 pt-8 shadow-xl sm:px-[65px] sm:pb-[27px] sm:pt-[46px]"
+        class="relative flex max-h-[calc(100dvh-4rem)] w-full max-w-[1535px] flex-col rounded bg-surface-card px-4 pb-6 pt-8 shadow-xl sm:px-[65px] sm:pb-[27px] sm:pt-[46px] lg:min-h-[min(672px,calc(100dvh-4rem))]"
         @keydown="onKeydown"
       >
         <button
@@ -144,11 +147,17 @@ onBeforeUnmount(() => {
         <!-- novalidate: проверку делаем сами и показываем свои сообщения -->
         <form
           v-else
-          class="mt-8 flex flex-col gap-8 sm:mt-[31px] lg:min-h-[521px]"
+          class="mt-8 flex min-h-0 flex-1 flex-col gap-8 sm:mt-[31px]"
           novalidate
           @submit.prevent="onSubmit"
         >
-          <div class="grid gap-8 lg:grid-cols-2 lg:gap-[65px]">
+          <!-- Отступ 4px внутри прокрутки (и такой же отрицательный снаружи): иначе overflow обрезает рамку
+               фокуса у полей по краям. relative: иначе sr-only подписи (absolute) позиционируются от панели,
+               выходят из прокрутки и растягивают подложку -->
+          <div
+            data-testid="category-editor-scroll"
+            class="relative -m-1 grid min-h-0 flex-1 content-start gap-8 overflow-y-auto p-1 lg:grid-cols-2 lg:gap-[65px]"
+          >
             <CategoryColumn
               :column="columns.outcome"
               title="Расходы"
@@ -166,7 +175,7 @@ onBeforeUnmount(() => {
               @update="updateRow"
             />
           </div>
-          <div class="mx-auto mt-auto flex w-full max-w-[671px] flex-col gap-3">
+          <div class="mx-auto flex w-full max-w-[671px] shrink-0 flex-col gap-3">
             <ErrorMessage data-testid="form-error" :message="message" />
             <BaseButton type="submit" class="w-full" :loading="saving">Сохранить</BaseButton>
           </div>

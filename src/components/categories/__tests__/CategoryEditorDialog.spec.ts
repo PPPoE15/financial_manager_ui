@@ -174,6 +174,26 @@ describe('CategoryEditorDialog', () => {
     expect(existingRows(column('Доходы'))).toEqual([['Зарплата', '200 000 ₽', '']])
   })
 
+  it('окно не выше экрана: колонки прокручиваются, заголовок и «Сохранить» — на месте', async () => {
+    await mountDialog()
+    const panel = page().get('[role="dialog"]')
+    const scroll = page().get('[data-testid="category-editor-scroll"]')
+
+    // Выше экрана окно не растёт: иначе центрирование подложкой уводит заголовок за верхний край
+    expect(panel.classes()).toEqual(
+      expect.arrayContaining(['flex', 'flex-col', 'max-h-[calc(100dvh-4rem)]']),
+    )
+    // relative: sr-only «план не задан» (absolute) иначе позиционируется от панели, выходит из прокрутки
+    // и растягивает подложку — на телефоне она прокручивается на высоту всех строк
+    expect(scroll.classes()).toEqual(
+      expect.arrayContaining(['relative', 'min-h-0', 'flex-1', 'overflow-y-auto']),
+    )
+    expect(scroll.findAll('h3').map((h) => h.text())).toEqual(['Расходы', 'Доходы'])
+    expect(scroll.find('h2').exists()).toBe(false)
+    expect(scroll.find('button[type="submit"]').exists()).toBe(false)
+    expect(scroll.find('[data-testid="form-error"]').exists()).toBe(false)
+  })
+
   it('существующие статьи только для чтения: полей у них нет, у каждой колонки одна пустая строка', async () => {
     await mountDialog()
 
