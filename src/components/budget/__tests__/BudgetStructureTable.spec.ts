@@ -169,17 +169,24 @@ describe('BudgetStructureTable', () => {
 
     expect(name.get('[aria-hidden="true"]').text()).toBe('очень длинное назван…')
     expect(name.get('.sr-only').text()).toBe('очень длинное название статьи')
-    expect(name.attributes('title')).toBe('очень длинное название статьи')
+    expect(name.attributes('title')).toBeUndefined()
+    expect(name.get('[title]').attributes('title')).toBe('очень длинное название статьи')
   })
 
-  it('название из 20 символов и короче выводит целиком, без подсказки', () => {
+  it('название из 20 символов и короче выводит целиком, с подсказкой на случай обрезки по ширине', () => {
+    // 20 широких букв («ЖИЛИЩНО-КОММУНАЛЬНЫЕ») шире колонки — их обрезает CSS, подсказка нужна и им
     const data = budgetStructure()
     data.rows[0]!.category.name = 'продукты и хозтовары'
     const name = mountTable(data).get('tbody th')
 
     expect(name.text()).toBe('продукты и хозтовары')
     expect(name.attributes('title')).toBeUndefined()
+    expect(name.get('[title]').attributes('title')).toBe('продукты и хозтовары')
     expect(name.find('[aria-hidden="true"]').exists()).toBe(false)
+  })
+
+  it('у строки «Сумма» подсказки нет', () => {
+    expect(mountTable().get('tfoot th').find('[title]').exists()).toBe(false)
   })
 
   it('разделитель перед месяцами — у закреплённого «Среднего», а не у прокручиваемого января', () => {
