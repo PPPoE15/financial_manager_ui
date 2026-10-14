@@ -952,6 +952,26 @@ describe('CategoryEditorDialog', () => {
     await flushPromises()
   })
 
+  it('удерживает фокус после промежуточного сохранения новой строки', async () => {
+    await mountDialog({ outcome: [], income: [] })
+    await fillRow(column('Расходы'), 0, { name: 'Кафе' })
+    await fillRow(column('Расходы'), 1, { name: 'Такси' })
+    const first = deferred<Category>()
+    const second = deferred<Category>()
+    create.mockImplementation((body) => body.name === 'Кафе' ? first.promise : second.promise)
+    ;(button('Сохранить').element as HTMLElement).focus()
+    await page().get('form').trigger('submit')
+    await flushPromises()
+    first.resolve(category({ name: 'Кафе' }))
+    await flushPromises()
+    const dialog = page().get('[role="dialog"]')
+    expect(button('Сохранить').attributes('aria-busy')).toBe('true')
+    expect(dialog.element.contains(document.activeElement)).toBe(true)
+    expect(document.activeElement?.tagName).toBe('INPUT')
+    second.resolve(category({ name: 'Такси' }))
+    await flushPromises()
+  })
+
   it('после закрытия возвращает фокус на вызвавшую кнопку', async () => {
     const opener = document.createElement('button')
     document.body.append(opener)

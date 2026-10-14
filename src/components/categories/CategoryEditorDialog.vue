@@ -48,7 +48,8 @@ function focusables(): HTMLElement[] {
 }
 
 function keepFocusInside(): void {
-  if (panel.value && !panel.value.contains(document.activeElement)) focusables()[0]?.focus()
+  const items = focusables()
+  if (!items.some((item) => item === document.activeElement)) items[0]?.focus()
 }
 
 function onKeydown(event: KeyboardEvent): void {
@@ -88,12 +89,14 @@ function setAppInert(value: boolean): void {
 }
 
 // Disabled-кнопки не удерживают фокус: Tab продолжает работать через readonly-поля.
-watch(saving, async (pending) => {
-  if (pending) {
+watch(
+  [saving, () => columns.outcome.rows.map((row) => row.key), () => columns.income.rows.map((row) => row.key)],
+  async () => {
+    // Успешный POST заменяет новую строку сохранённой ещё до завершения остальных запросов.
     await nextTick()
-    focusables()[0]?.focus()
-  }
-})
+    keepFocusInside()
+  },
+)
 
 async function onLoad(): Promise<void> {
   await load()
