@@ -136,15 +136,35 @@ describe('BudgetStructureTable', () => {
     for (const row of mountTable().findAll('tr')) {
       const [category, plan, average] = row.findAll('th, td')
       expect(category!.classes()).toEqual(
-        expect.arrayContaining(['sm:w-[241px]', 'sm:min-w-[241px]']),
+        expect.arrayContaining(['sm:w-[200px]', 'sm:min-w-[200px]']),
       )
       expect(plan!.classes()).toEqual(
-        expect.arrayContaining(['sm:sticky', 'sm:left-[241px]', 'w-[115px]', 'bg-surface-card']),
+        expect.arrayContaining(['sm:sticky', 'sm:left-[200px]', 'w-[115px]', 'bg-surface-card']),
       )
       expect(average!.classes()).toEqual(
-        expect.arrayContaining(['sm:sticky', 'sm:left-[356px]', 'w-[138px]', 'bg-surface-card']),
+        expect.arrayContaining(['sm:sticky', 'sm:left-[315px]', 'w-[138px]', 'bg-surface-card']),
       )
     }
+  })
+
+  it('название длиннее 20 символов обрезает с многоточием, полное — в подсказке и для скринридера', () => {
+    const data = budgetStructure()
+    data.rows[0]!.category.name = 'очень длинное название статьи'
+    const name = mountTable(data).get('tbody th')
+
+    expect(name.get('[aria-hidden="true"]').text()).toBe('очень длинное назван…')
+    expect(name.get('.sr-only').text()).toBe('очень длинное название статьи')
+    expect(name.attributes('title')).toBe('очень длинное название статьи')
+  })
+
+  it('название из 20 символов и короче выводит целиком, без подсказки', () => {
+    const data = budgetStructure()
+    data.rows[0]!.category.name = 'продукты и хозтовары'
+    const name = mountTable(data).get('tbody th')
+
+    expect(name.text()).toBe('продукты и хозтовары')
+    expect(name.attributes('title')).toBeUndefined()
+    expect(name.find('[aria-hidden="true"]').exists()).toBe(false)
   })
 
   it('разделитель перед месяцами — у закреплённого «Среднего», а не у прокручиваемого января', () => {

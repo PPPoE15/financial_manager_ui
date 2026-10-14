@@ -1,7 +1,14 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 
-import { COLUMN_CLASS, monthColumnClass, PINNED_Z, TOTAL_CLASS } from '@/components/budget/columns'
+import {
+  CATEGORY_NAME_CLASS,
+  CATEGORY_NAME_MAX,
+  COLUMN_CLASS,
+  monthColumnClass,
+  PINNED_Z,
+  TOTAL_CLASS,
+} from '@/components/budget/columns'
 import MoneyCell from '@/components/budget/MoneyCell.vue'
 import type { MonthFact } from '@/types/budget'
 
@@ -15,6 +22,13 @@ const props = defineProps<{
   total?: boolean
 }>()
 
+// Обрезанное название видно глазами, полное — в подсказке при наведении и для скринридера
+const shortName = computed(() =>
+  props.name.length > CATEGORY_NAME_MAX
+    ? `${props.name.slice(0, CATEGORY_NAME_MAX).trimEnd()}…`
+    : null,
+)
+
 const pinned = computed(() =>
   props.total
     ? { category: TOTAL_CLASS.pinned, plan: TOTAL_CLASS.pinned, average: TOTAL_CLASS.pinned }
@@ -24,8 +38,18 @@ const pinned = computed(() =>
 
 <template>
   <tr class="h-[34px]" :class="total && 'font-bold'">
-    <th scope="row" :class="[COLUMN_CLASS.category, pinned.category, !total && 'font-medium']">
-      {{ name }}
+    <th
+      scope="row"
+      :title="shortName ? name : undefined"
+      :class="[COLUMN_CLASS.category, pinned.category, !total && 'font-medium']"
+    >
+      <span :class="CATEGORY_NAME_CLASS">
+        <template v-if="shortName">
+          <span aria-hidden="true">{{ shortName }}</span>
+          <span class="sr-only">{{ name }}</span>
+        </template>
+        <template v-else>{{ name }}</template>
+      </span>
     </th>
     <MoneyCell
       :value="plan"
