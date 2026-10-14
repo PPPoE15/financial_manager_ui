@@ -109,6 +109,19 @@ Vue 3 + TypeScript + Vite SPA («Финансовый менеджер»), Pinia
   in `columns.ts`. `null` amounts render as a pale «—» with an sr-only reason (план не задан /
   нет завершённых месяцев / месяц ещё не наступил), `0` as «0 ₽». The plan/fact colouring from the
   mockup is not implemented yet (TODO in the table).
+- **Categories (`src/categories/`, `src/api/categories.ts`, `src/components/categories/`)**: window
+  «Редактирование категорий» per the mockup (section «Новый дизайн», frame `234:734`, window `234:954`;
+  current theme colours), opened by «Редактировать категории» in `BudgetStructureCard`, which reloads the
+  table on `saved`. `api/categories.ts` — `listCategories(type)` (`GET /transaction/categories`, limit
+  100 = the per-user limit) and `createCategory` (`POST`). `useCategoryEditor` holds both columns:
+  existing categories are read-only (editing via `PATCH` is FM-4) plus rows for new ones — a new empty
+  row appears as soon as the last one is touched. «Сохранить» validates (`categories/validation.ts`,
+  same rules as the contract; a name already in the column is «Такая статья уже есть»), then sends one
+  `POST` per filled row in parallel: saved rows move into the list, failed rows keep their error
+  (`FM-409101` duplicate, `FM-409103` limit, 422 by field), network/5xx go to a window message; the
+  window closes only when every row was saved. Rows are window data: `CategoryNewRow` emits `update`,
+  the dialog writes it. Tests mount the dialog with a real Teleport (the teleport stub re-creates the
+  window markup on updates, detaching elements found earlier).
 - **Money (`src/utils/money.ts`)**: `formatMoney(value)` — app-wide ₽ formatter for integer roubles:
   `10 000 ₽` with NBSP grouping (also for 4-digit numbers, unlike `Intl` ru-RU), `−` for negatives,
   `null` → `MISSING_VALUE` («—»).
