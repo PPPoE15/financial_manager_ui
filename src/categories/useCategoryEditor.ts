@@ -62,6 +62,8 @@ function emptyRow(): EditorRow {
 }
 
 /** Значения полей статьи: план — с разделителями разрядов, как в макете («4 990»), без знака ₽. */
+// TODO(FM-46): план получается вырезанием «₽» и NBSP из formatMoney — смена её формата (см. TODO(FM-28)) оставит
+// в поле «4 990 ₽», которое parsePlan отклонит. Вынести группировку разрядов в отдельный хелпер в utils/money.ts.
 function fieldValues(category: Category): Pick<EditorRow, RowField> {
   return {
     name: category.name,
@@ -119,6 +121,8 @@ function applySaveError(row: EditorRow, error: unknown): string | null {
     return null
   }
   // PATCH: статью удалили (в другой вкладке) после открытия окна
+  // TODO(FM-46): любой 404 считается «статья удалена» — без проверки кода ошибки и вида запроса: 404 на POST
+  // (прокси, бэкенд без маршрута) покажет это у новой строки. Различать по коду и по create/update.
   if (status === 404) {
     row.message = NOT_FOUND_ERROR
     return null
