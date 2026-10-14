@@ -22,6 +22,8 @@ const { columns, loading, loadFailed, message, saving, load, save, updateRow } =
 const titleId = useId()
 const panel = ref<HTMLElement | null>(null)
 // Элемент, с которого открыли окно (ссылка «Редактировать категории»): после закрытия фокус вернётся на него
+// TODO(FM-42): в Safari (и Firefox на macOS) клик мышью не фокусирует кнопку — activeElement здесь body, и фокус
+// не возвращается. Передавать ref кнопки из BudgetStructureCard.
 const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null
 
 const FOCUSABLE = 'input:not([disabled]), button:not([disabled])'

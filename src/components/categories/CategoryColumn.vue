@@ -67,6 +67,9 @@ const cell = 'flex h-[46px] min-w-0 items-center rounded-sm bg-surface px-[15px]
           </template>
           <span v-else class="sr-only">план не задан</span>
         </span>
+        <!-- NOTE(FM-42): в макете у статьи без комментария в ячейке бледная подсказка «Комментарий», как
+             в поле ввода. Существующие статьи пока только для чтения, и подсказка выдавала бы ячейку за поле —
+             ячейка пустая. С редактированием (FM-4) ячейки станут полями с этой подсказкой. -->
         <span data-testid="cell" :class="cell">
           <span v-if="category.description" class="truncate" :title="category.description">{{
             category.description

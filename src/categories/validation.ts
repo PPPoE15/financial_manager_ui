@@ -8,6 +8,7 @@ export const NAME_MAX_LENGTH = 64
 export const DESCRIPTION_MAX_LENGTH = 500
 export const PLAN_LIMIT = 1_000_000_000
 
+// TODO(FM-42): копия приватной функции из firstStep/validation.ts (с параметром allowed) — вынести общую.
 function hasControlCharacters(value: string, allowed: readonly string[] = []): boolean {
   return [...value].some((char) => {
     const code = char.codePointAt(0) ?? 0

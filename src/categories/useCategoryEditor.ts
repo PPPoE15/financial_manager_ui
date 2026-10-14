@@ -54,6 +54,8 @@ function emptyRow(): NewRow {
   return { key: nextKey, name: '', plan: '', description: '', errors: {}, message: null }
 }
 
+// TODO(FM-42): строка из одних пробелов считается заполненной — появляется ещё одна пустая, а «Сохранить»
+// показывает «Введите название» у строки, которая выглядит пустой. Сравнивать после trim().
 function isBlank(row: NewRow): boolean {
   return !row.name && !row.plan && !row.description
 }
@@ -67,6 +69,8 @@ interface ProblemResponse {
   validation?: { field?: string }[]
 }
 
+// TODO(FM-42): разбор «нет ответа / 5xx / 422 по полям» и `ProblemResponse` повторяют mapAuthError
+// из auth/errors.ts (и mapSaveError из firstStep) — вынести общий разбор ошибок API.
 /** Разложить ошибку `POST /categories` по строке; вернуть общее сообщение окна, если оно нужно. */
 function applySaveError(row: NewRow, error: unknown): string | null {
   if (!isAxiosError(error)) return GENERIC_ERROR
@@ -84,6 +88,8 @@ function applySaveError(row: NewRow, error: unknown): string | null {
   }
   if (status === 422) {
     const fields = (data.validation ?? [])
+      // TODO(FM-42): без проверки own-property, как `isAuthField` в auth/errors.ts: `field: "constructor"`
+      // даст мусорный ключ и ошибка не покажется нигде. Клиент шлёт только известные поля — маловероятно.
       .map((item) => REQUEST_FIELDS[item.field ?? ''])
       .filter((field): field is NewRowField => field !== undefined)
     if (fields.length) {
@@ -155,6 +161,7 @@ export function useCategoryEditor(): CategoryEditor {
   const saving = ref(false)
 
   // Пустая строка всегда последняя: как только в неё начали вводить, под ней появляется следующая
+  // TODO(FM-42): лишние пустые строки не убираются — ввести символ и стереть его оставляет две пустые внизу.
   for (const column of Object.values(columns)) {
     watch(
       () => column.rows.map(isBlank),
@@ -188,6 +195,8 @@ export function useCategoryEditor(): CategoryEditor {
   ): Promise<boolean> {
     try {
       const created = await createCategory(body)
+      // NOTE(FM-42): созданная статья добавляется в конец в порядке ответов, а не по названию, как в
+      // GET /categories; порядок восстанавливается при следующем открытии окна.
       column.categories.push(created)
       column.rows.splice(column.rows.indexOf(row), 1)
       return true
@@ -230,6 +239,8 @@ export function useCategoryEditor(): CategoryEditor {
     }
   }
 
+  // TODO(FM-42): ошибка поля (в том числе 409/422 от сервера) остаётся до следующего «Сохранить», хотя поле
+  // уже исправлено — сбрасывать ошибку поля (и ошибку строки) при вводе.
   function updateRow(row: NewRow, field: NewRowField, value: string): void {
     row[field] = value
   }
