@@ -10,6 +10,7 @@ export default {
           DEFAULT: '#E5EAFF', light: '#FFFFFF', dark: '#1E2532',
           muted: '#CBD5E8', soft: '#2F3C53',
         },
+        dialog: { start: '#465978', end: '#2F3D50', backdrop: '#010D17' },
         surface: { DEFAULT: '#4A5C7A', brand: '#2A3B53', card: '#1E2532', muted: '#2F3C53' },
         ink: {
           DEFAULT: '#FFFFFF', secondary: '#E5EAFF', muted: '#CBD5E8',

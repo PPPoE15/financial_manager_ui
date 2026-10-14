@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { nextTick, onBeforeUnmount, onMounted, ref, useId } from 'vue'
+import { nextTick, onBeforeUnmount, onMounted, ref, useId, watch } from 'vue'
 
 import CategoryColumn from '@/components/categories/CategoryColumn.vue'
 import BaseButton from '@/components/ui/BaseButton.vue'
@@ -8,9 +8,7 @@ import { useCategoryEditor } from '@/categories/useCategoryEditor'
 
 // Окно «Редактирование категорий» по макету «Новый дизайн» (фрейм 234:734, окно 234:954; геометрия —
 // из метаданных узла: окно 1535×672, поля 65px, колонки по 670px с зазором 65px, кнопка 671px по центру).
-// Цвета — текущей темы приложения, как в «Первом шаге» (FM-39): переход на новый дизайн не входит в задачу.
-// Отклонение от макета: кнопка «Сохранить» высотой 50px (h-control, как все основные кнопки приложения),
-// а не 38px. Окно открывается поверх главной, закрывается крестиком и Escape, фокус удерживается внутри.
+// FM-59: полупрозрачный градиент нового дизайна, кнопка общей темы высотой 37.5px. Окно открывается поверх главной, закрывается крестиком и Escape, фокус удерживается внутри.
 // Высота (FM-44): по макету 672px, но не выше экрана за вычетом полей подложки (2 × 2rem) — при многих статьях
 // прокручиваются только колонки, заголовок с крестиком и «Сохранить» остаются на месте. На экране ниже 540px
 // колонкам так осталось бы меньше строки — там окно растёт целиком и прокручивается с подложкой. Центрирует
@@ -89,6 +87,14 @@ function setAppInert(value: boolean): void {
   document.getElementById('app')?.toggleAttribute('inert', value)
 }
 
+// Disabled-кнопки не удерживают фокус: Tab продолжает работать через readonly-поля.
+watch(saving, async (pending) => {
+  if (pending) {
+    await nextTick()
+    focusables()[0]?.focus()
+  }
+})
+
 async function onLoad(): Promise<void> {
   await load()
   await nextTick()
@@ -151,14 +157,14 @@ onBeforeUnmount(() => {
 <template>
   <Teleport to="body">
     <div
-      class="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-ink/40 px-4 py-8 font-sans text-ink backdrop-blur-sm"
+      class="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-dialog-backdrop/40 px-4 py-8 font-sans text-ink backdrop-blur-md"
     >
       <div
         ref="panel"
         role="dialog"
         aria-modal="true"
         :aria-labelledby="titleId"
-        class="relative flex w-full max-w-[1535px] flex-col rounded bg-surface-card px-4 pb-6 pt-8 shadow-xl sm:px-[65px] sm:pb-[27px] sm:pt-[46px] sm:my-auto lg:min-h-[min(672px,calc(100dvh-4rem))] [@media(min-height:540px)]:max-h-[calc(100dvh-4rem)]"
+        class="relative flex w-full max-w-[1535px] flex-col rounded-[15px] bg-gradient-to-r from-dialog-start/70 to-dialog-end/70 px-4 pb-6 pt-8 shadow-xl sm:px-[65px] sm:pb-[27px] sm:pt-[46px] sm:my-auto lg:min-h-[min(672px,calc(100dvh-4rem))] [@media(min-height:540px)]:max-h-[calc(100dvh-4rem)]"
         @keydown="onKeydown"
       >
         <button
@@ -174,7 +180,7 @@ onBeforeUnmount(() => {
           </svg>
         </button>
 
-        <h2 :id="titleId" class="pr-10 text-xl font-bold text-primary sm:text-2xl">
+        <h2 :id="titleId" class="pr-10 text-xl font-bold text-ink sm:text-2xl">
           Редактирование категорий
         </h2>
 

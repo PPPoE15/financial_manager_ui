@@ -311,6 +311,20 @@ describe('FirstStepDialog', () => {
   })
 
   describe('клавиатура и модальность', () => {
+    it('во время сохранения фокус остаётся в окне, поля доступны только для чтения', async () => {
+      const pending = deferred<User>()
+      vi.mocked(updateCurrentUser).mockReturnValue(pending.promise)
+      const w = await mountDialog(withoutName, 'set')
+      await field(w, NAME_LABEL).setValue('Артём')
+      ;(submitButton(w).element as HTMLElement).focus()
+      await w.get('form').trigger('submit')
+      await flushPromises()
+      expect(field(w, NAME_LABEL).attributes('readonly')).toBeDefined()
+      expect(document.activeElement).toBe(field(w, NAME_LABEL).element)
+      pending.resolve(withName)
+      await flushPromises()
+    })
+
     it('при открытии фокус в первом поле', async () => {
       const w = await mountDialog(withoutName, 'missing')
 

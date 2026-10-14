@@ -15,6 +15,7 @@ const props = withDefaults(
     placeholder: string
     error?: string | null
     suffix?: string
+    readonly?: boolean
     autocomplete?: string
   }>(),
   { error: null, suffix: undefined, autocomplete: 'off' },
@@ -42,9 +43,10 @@ const describedBy = computed(() =>
         type="text"
         :placeholder="placeholder"
         :autocomplete="autocomplete"
+        :readonly="readonly"
         :aria-invalid="error ? 'true' : undefined"
         :aria-describedby="describedBy"
-        class="h-control w-full rounded border bg-surface px-[18px] text-base tracking-normal text-ink outline-none placeholder:text-ink-placeholder focus-visible:outline-2 focus-visible:outline-offset-0 focus-visible:outline-primary"
+        class="h-[46px] w-full rounded-md border bg-field px-[18px] text-base sm:text-sm tracking-normal text-ink outline-none placeholder:text-ink-placeholder focus-visible:outline-2 hover:bg-field-hover focus-visible:outline-offset-2 focus-visible:outline-focus"
         :class="[error ? 'border-danger' : 'border-transparent', suffix && 'pr-12']"
       />
       <span

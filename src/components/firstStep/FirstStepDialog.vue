@@ -7,7 +7,7 @@ import ErrorMessage from '@/components/ui/ErrorMessage.vue'
 import { useFirstStep } from '@/firstStep/useFirstStep'
 
 // Окно «Первый шаг» по макету «Приветствие» (секция «Новый дизайн», узел 220:81) поверх главной.
-// Цвета — текущей темы приложения: переход на новый дизайн не входит в FM-39. Окно обязательное:
+// FM-59: градиентная панель нового дизайна. Окно обязательное:
 // крестика в макете нет, Escape и клик по фону его не закрывают, фокус удерживается внутри.
 const { needName, needBalance, visible, form, errors, message, submitting, check, submit } =
   useFirstStep()
@@ -63,9 +63,13 @@ watch(visible, async (open) => {
   }
 })
 
-// TODO(FM-39): во время запроса кнопка становится disabled и фокус уходит на <body>; после закрытия окна
-// фокус тоже остаётся на <body> — вернуть его на заголовок главной, а при частичном успехе ставить
-// в поле с ошибкой, а не в первое.
+// При disabled-кнопке оставляем фокус в доступном readonly-поле, чтобы Tab не вышел из окна.
+watch(submitting, async (pending) => {
+  if (pending) {
+    await nextTick()
+    focusables()[0]?.focus()
+  }
+})
 async function onSubmit(): Promise<void> {
   await submit()
   await nextTick()
@@ -80,17 +84,17 @@ onBeforeUnmount(() => setAppInert(false))
   <Teleport to="body">
     <div
       v-if="visible"
-      class="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-ink/40 px-4 py-8 font-sans text-ink backdrop-blur-sm sm:items-center"
+      class="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-dialog-backdrop/40 px-4 py-8 font-sans text-ink backdrop-blur-md"
     >
       <div
         ref="panel"
         role="dialog"
         aria-modal="true"
         :aria-labelledby="titleId"
-        class="w-full max-w-[800px] rounded bg-surface-card px-6 py-8 shadow-xl sm:px-[100px] sm:py-[70px]"
+        class="w-full my-auto max-w-[800px] rounded-[15px] bg-gradient-to-r from-dialog-start/70 to-dialog-end/70 px-6 py-8 shadow-xl sm:px-[100px] sm:py-[70px]"
         @keydown="onKeydown"
       >
-        <h2 :id="titleId" class="text-2xl font-bold text-primary sm:text-3xl">Первый шаг</h2>
+        <h2 :id="titleId" class="text-2xl font-bold text-ink sm:text-3xl">Первый шаг</h2>
         <!-- novalidate: проверку делаем сами и показываем свои сообщения -->
         <form
           class="mt-8 flex flex-col gap-8 sm:mt-[60px] sm:gap-[60px]"
@@ -104,6 +108,7 @@ onBeforeUnmount(() => setAppInert(false))
             hint="Хотим обращаться к Вам по имени"
             placeholder="Ваше имя"
             autocomplete="given-name"
+            :readonly="submitting"
             :error="errors.name"
           />
           <FirstStepField
@@ -113,6 +118,7 @@ onBeforeUnmount(() => setAppInert(false))
             hint="Для начала отсчета"
             placeholder="Сумма накоплений"
             suffix="₽"
+            :readonly="submitting"
             :error="errors.amount"
           />
           <div class="flex flex-col gap-3">
