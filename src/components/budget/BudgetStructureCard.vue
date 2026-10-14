@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 
 import { MAX_YEAR, MIN_YEAR, useBudgetStructure } from '@/budget/useBudgetStructure'
 import BudgetStructureTable from '@/components/budget/BudgetStructureTable.vue'
+import CategoryEditorDialog from '@/components/categories/CategoryEditorDialog.vue'
 import BaseButton from '@/components/ui/BaseButton.vue'
 import ErrorMessage from '@/components/ui/ErrorMessage.vue'
 import type { TransactionType } from '@/types/budget'
@@ -10,8 +11,12 @@ import type { TransactionType } from '@/types/budget'
 // Карточка «Мои категории — Структура бюджета» по макету Figma Frame 8 (узлы 116:125, 116:127, 116:129).
 // Выбора года и типа статей, состояний загрузки, ошибки и пустого в макете нет — согласованное
 // отклонение (FM-28): переключатель «Расходы / Доходы» в стиле вкладок экрана входа и год стрелками
-// в стиле вторичной кнопки макета, на месте «Добавить» (кнопка — в задаче создания статьи).
+// в стиле вторичной кнопки макета.
 const { year, categoryType, data, loading, failed, reload } = useBudgetStructure()
+
+// Окно «Редактирование категорий» (FM-42): открывается ссылкой в шапке карточки, как в макете;
+// после создания статей таблица перезапрашивается.
+const editorOpen = ref(false)
 
 const types: { value: TransactionType; label: string }[] = [
   { value: 'outcome', label: 'Расходы' },
@@ -40,6 +45,16 @@ const controlFocus =
       </div>
 
       <div class="flex flex-wrap items-center gap-3">
+        <!-- «Редактировать категории» в макете — подпись 12px в правом верхнем углу карточки (узел 189:874);
+             по смыслу это кнопка: открывает окно, а не переходит на страницу -->
+        <button
+          type="button"
+          class="rounded-sm text-caption text-ink-muted hover:text-primary"
+          :class="controlFocus"
+          @click="editorOpen = true"
+        >
+          Редактировать категории
+        </button>
         <div
           role="group"
           aria-label="Тип статей"
@@ -115,5 +130,7 @@ const controlFocus =
       </p>
       <BudgetStructureTable v-else-if="data" :data="data" />
     </div>
+
+    <CategoryEditorDialog v-if="editorOpen" @saved="reload" @close="editorOpen = false" />
   </section>
 </template>
