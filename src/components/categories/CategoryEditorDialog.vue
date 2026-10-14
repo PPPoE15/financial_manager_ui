@@ -38,7 +38,9 @@ function keepFocusInside(): void {
 function onKeydown(event: KeyboardEvent): void {
   if (event.key === 'Escape') {
     event.preventDefault()
-    emit('close')
+    // Во время сохранения окно не закрывается: родитель снимет его через v-if, и «saved» после
+    // ответа уже не дойдёт — таблица «Структура бюджета» не узнает о созданных статьях
+    if (!saving.value) emit('close')
     return
   }
   if (event.key !== 'Tab') return
@@ -108,7 +110,8 @@ onBeforeUnmount(() => {
         <button
           type="button"
           aria-label="Закрыть"
-          class="absolute right-3 top-3 flex size-10 items-center justify-center rounded-sm text-ink-muted hover:text-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary sm:right-[14px] sm:top-[14px]"
+          :disabled="saving"
+          class="absolute right-3 top-3 flex size-10 items-center justify-center rounded-sm text-ink-muted hover:text-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary disabled:cursor-not-allowed disabled:opacity-50 sm:right-[14px] sm:top-[14px]"
           @click="emit('close')"
         >
           <!-- Крестик 12×12 из макета (узел 235:1004) -->

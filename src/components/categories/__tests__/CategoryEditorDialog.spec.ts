@@ -424,6 +424,23 @@ describe('CategoryEditorDialog', () => {
     expect(create).not.toHaveBeenCalled()
   })
 
+  it('во время сохранения окно не закрывается: иначе «saved» не дойдёт и таблица не обновится', async () => {
+    const w = await mountDialog()
+    await fillRow(column('Расходы'), 0, { name: 'Кафе' })
+    const pending = deferred<Category>()
+    create.mockReturnValue(pending.promise)
+    await page().get('form').trigger('submit')
+
+    expect(button('Закрыть').attributes('disabled')).toBeDefined()
+    await page().get('[role="dialog"]').trigger('keydown', { key: 'Escape' })
+    expect(w.emitted('close')).toBeUndefined()
+
+    pending.resolve(category({ name: 'Кафе' }))
+    await flushPromises()
+    expect(w.emitted('saved')).toHaveLength(1)
+    expect(w.emitted('close')).toHaveLength(1)
+  })
+
   it('фокус: при открытии — в окне, Tab с последнего элемента переходит на первый', async () => {
     await mountDialog()
     const dialog = page().get('[role="dialog"]')
