@@ -3,18 +3,22 @@ import { mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 
 import { getStartingBalance } from '@/api/balance'
+import { listTransactions } from '@/api/transactions'
+import RecentTransactionsCard from '@/components/transactions/RecentTransactionsCard.vue'
 import { getBudgetStructure } from '@/api/budget'
 import BudgetStructureCard from '@/components/budget/BudgetStructureCard.vue'
 import FirstStepDialog from '@/components/firstStep/FirstStepDialog.vue'
 import { useSessionStore } from '@/stores/session'
 import HomeView from '@/views/HomeView.vue'
 
+vi.mock('@/api/transactions', () => ({ listTransactions: vi.fn() }))
 vi.mock('@/api/budget', () => ({ getBudgetStructure: vi.fn() }))
 vi.mock('@/api/balance', () => ({ getStartingBalance: vi.fn(), createStartingBalance: vi.fn() }))
 
 describe('HomeView', () => {
   beforeEach(() => {
     setActivePinia(createPinia())
+    vi.mocked(listTransactions).mockResolvedValue([])
     vi.mocked(getBudgetStructure).mockReturnValue(new Promise(() => {}))
     vi.mocked(getStartingBalance).mockReturnValue(new Promise(() => {}))
   })
@@ -37,6 +41,11 @@ describe('HomeView', () => {
 
   it('показывает таблицу «Структура бюджета»', () => {
     expect(mount(HomeView).findComponent(BudgetStructureCard).exists()).toBe(true)
+  })
+
+  it('подключает обе карточки недавних записей', () => {
+    const cards = mount(HomeView).findAllComponents(RecentTransactionsCard)
+    expect(cards.map((card) => card.props('type'))).toEqual(['income', 'outcome'])
   })
 
   it('подключает окно «Первый шаг»', () => {

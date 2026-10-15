@@ -2,6 +2,7 @@
 import { computed } from 'vue'
 
 import BudgetStructureCard from '@/components/budget/BudgetStructureCard.vue'
+import RecentTransactionsCard from '@/components/transactions/RecentTransactionsCard.vue'
 import FirstStepDialog from '@/components/firstStep/FirstStepDialog.vue'
 import { useSessionStore } from '@/stores/session'
 
@@ -18,10 +19,19 @@ const greeting = computed(() =>
     <h1 class="break-words font-brand text-xl font-medium sm:text-2xl lg:min-h-11 lg:pr-[260px]">
       {{ greeting }}
     </h1>
-    <!-- FM-50 добавит карточки доходов/расходов в левую колонку. Пока реальные данные есть
-         только у категорий; суммы, график и добавление виджета не имитируются. -->
+
     <!-- NOTE(FM-57): минимум 620px оставляет целый месяц рядом с 453px закреплённых колонок. -->
     <div class="mt-6 grid min-w-0 gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(620px,1fr)]">
+      <div class="min-w-0">
+        <!-- Место под «Сумму бюджета» / «Свободные средства»: 150px макета × 0.75 темы.
+             На узком экране пустое место скрыто; сами показатели появятся отдельно. -->
+        <div aria-hidden="true" class="mb-4 hidden h-[112.5px] xl:block" />
+        <div class="grid min-w-0 gap-4 sm:grid-cols-2 xl:grid-cols-1 2xl:grid-cols-2">
+          <!-- Открытие окна ввода подключается отдельной задачей; карточки уже отдают add(type). -->
+          <RecentTransactionsCard type="income" />
+          <RecentTransactionsCard type="outcome" />
+        </div>
+      </div>
       <div
         id="categories"
         tabindex="-1"

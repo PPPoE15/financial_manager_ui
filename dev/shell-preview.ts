@@ -44,7 +44,9 @@ http.defaults.adapter = async (config) => ({
             months: rows.length ? months : [],
           },
         }
-      : { amount: 0 },
+      : config.url === '/transactions'
+        ? { content: [], total: 0 }
+        : { amount: 0 },
 })
 const router = createAppRouter(createMemoryHistory(), [])
 await router.push('/')
