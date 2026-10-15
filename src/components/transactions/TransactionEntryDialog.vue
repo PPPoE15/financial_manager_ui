@@ -82,7 +82,7 @@ onBeforeUnmount(() => {
   opener?.focus()
 })
 const fieldClass =
-  'h-[46px] w-full min-w-0 rounded-sm border border-transparent bg-field px-[15px] text-base font-medium text-ink placeholder:font-normal placeholder:text-ink-placeholder focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus sm:text-sm'
+  'h-control w-full min-w-0 rounded border border-transparent bg-field px-3 text-base font-medium text-ink placeholder:font-normal placeholder:text-ink-placeholder focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus sm:text-[10.5px] sm:tracking-normal'
 </script>
 
 <template>
@@ -90,14 +90,14 @@ const fieldClass =
     <div
       class="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-dialog-backdrop/40 px-4 py-8 font-sans text-ink backdrop-blur-md"
     >
-      <!-- FM-51: PDF-экспорт Figma, окно 800×672, поля 65px, колонки 184/185/292.
-           Узкий экран и служебные состояния согласованы отдельно; токены общей темы. -->
+      <!-- FM-60: Figma 222:333, размеры 800×672 и поля 65px в масштабе темы 0.75.
+           Адаптация узкого экрана и служебных состояний сохранена из FM-51. -->
       <div
         ref="panel"
         role="dialog"
         aria-modal="true"
         :aria-labelledby="`${id}-title`"
-        class="relative my-auto flex w-full max-w-[800px] flex-col rounded-[15px] bg-gradient-to-r from-dialog-start/70 to-dialog-end/70 px-4 pb-6 pt-12 shadow-xl sm:px-[65px] sm:pb-[27px] sm:pt-[46px] [@media(min-height:540px)]:min-h-[min(672px,calc(100dvh-4rem))] [@media(min-height:540px)]:max-h-[calc(100dvh-4rem)]"
+        class="relative my-auto flex w-full max-w-[600px] flex-col rounded-[11.25px] bg-gradient-to-r from-dialog-start/70 to-dialog-end/70 px-4 pb-6 pt-12 shadow-xl sm:px-[48.75px] sm:pb-[20.25px] sm:pt-[34.5px] [@media(min-height:540px)]:min-h-[min(504px,calc(100dvh-4rem))] [@media(min-height:540px)]:max-h-[calc(100dvh-4rem)]"
         @keydown="keydown"
       >
         <button
@@ -112,8 +112,8 @@ const fieldClass =
           </svg>
         </button>
         <form class="flex min-h-0 flex-1 flex-col" novalidate @submit.prevent="submit">
-          <header class="flex shrink-0 flex-wrap items-center justify-between gap-4">
-            <h2 :id="`${id}-title`" class="text-xl font-bold sm:text-2xl">
+          <header class="flex shrink-0 flex-wrap items-center justify-between gap-3">
+            <h2 :id="`${id}-title`" class="text-lg font-bold sm:text-xl">
               {{ type === 'income' ? 'Учесть новые доходы' : 'Учесть новые расходы' }}
             </h2>
             <div class="min-w-0">
@@ -126,7 +126,7 @@ const fieldClass =
                 :readonly="saving"
                 :aria-invalid="dateError ? 'true' : undefined"
                 :aria-describedby="dateError ? `${id}-date-error` : undefined"
-                class="min-h-8 max-w-full rounded bg-field px-3 text-sm text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus"
+                class="min-h-8 max-w-full rounded bg-field px-2 text-base sm:text-caption text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus"
                 @input="dateError = ''"
               />
               <ErrorMessage :id="`${id}-date-error`" :message="dateError" />
@@ -158,10 +158,10 @@ const fieldClass =
             >
           </div>
           <template v-else-if="!loading">
-            <div class="relative -mx-1 mb-8 mt-[31px] min-h-0 flex-1 overflow-y-auto px-1 pb-1">
+            <div class="relative -mx-1 mb-6 mt-[23.25px] min-h-0 flex-1 overflow-y-auto px-1 pb-1">
               <div
                 aria-hidden="true"
-                class="mb-3 hidden grid-cols-[184fr_185fr_292fr] gap-[5px] px-1 text-base sm:grid"
+                class="mb-2 hidden grid-cols-[184fr_185fr_292fr] gap-[3.75px] px-1 text-caption sm:grid"
               >
                 <span>Категория</span><span>Сумма</span><span>Комментарий</span>
               </div>
@@ -172,18 +172,21 @@ const fieldClass =
                 role="group"
                 :aria-label="`Запись ${index + 1}`"
                 :data-row-error="Boolean(row.message)"
-                class="mb-4 sm:mb-[5px]"
+                class="mb-4 sm:mb-[3.75px]"
               >
-                <div class="grid gap-[5px] sm:grid-cols-[184fr_185fr_292fr]">
+                <div class="grid gap-[3.75px] sm:grid-cols-[184fr_185fr_292fr]">
                   <div class="min-w-0">
                     <label
                       :for="`${id}-${row.key}-category`"
                       class="mb-1 block text-caption sm:sr-only"
                       >Категория</label
                     >
+                    <!-- TODO(FM-60): подобрать место для полной подсказки «Выберите категорию»
+                         в нативном select: на широком экране она обрезается, как и до смены темы. -->
                     <select
                       :id="`${id}-${row.key}-category`"
                       :value="row.category"
+                      :title="categories.find((category) => category.uid === row.category)?.name"
                       :disabled="saving"
                       :class="[fieldClass, row.errors.category && 'border-danger']"
                       :aria-invalid="row.errors.category ? 'true' : undefined"
@@ -230,7 +233,7 @@ const fieldClass =
                       <span
                         v-if="row.amount"
                         aria-hidden="true"
-                        class="pointer-events-none absolute inset-y-0 right-[15px] flex items-center text-sm"
+                        class="pointer-events-none absolute inset-y-0 right-3 flex items-center text-sm"
                         >₽</span
                       >
                     </div>
