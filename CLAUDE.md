@@ -49,6 +49,10 @@ Vue 3 + TypeScript + Vite SPA («Финансовый менеджер»), Pinia
   `POST /auth/token/refresh` and retries once. Concurrent and late 401s share the rotated pair.
   Missing refresh, failed refresh (including network/5xx), or a second 401 calls `onUnauthorized`.
   While logout is in progress, other 401s cannot start a refresh; logout alone may renew expired access.
+  Refresh and logout use the shared `fm-session` Web Lock across tabs. Each operation re-reads
+  the atomic `authSession` snapshot under the lock, so delayed storage events cannot cause duplicate
+  refreshes. Login commits under the same lock. Without Web Locks (HTTPS/localhost required), refresh
+  fails closed to login; logout still sends its token but cannot renew expired access.
   The session generation prevents old refresh responses/401s from replacing or clearing a newer login. Requests made without a session (login, registration) pass `skipAuth: true`:
   no token is attached even if a stale one is stored, and their 401 (wrong credentials) is left to
   the caller. `client.ts` exports the app-wide `http` wired to the session store: failed renewal clears the
@@ -56,8 +60,11 @@ Vue 3 + TypeScript + Vite SPA («Финансовый менеджер»), Pinia
   `redirectToLogin(router)`. `src/api/` must not import the router (guards in `src/router/guards.ts`
   may call the API, which would create an import cycle). API functions should import `http` from
   `@/api/client`.
-- **Session (`src/stores/session.ts`)**: Pinia setup store — `token` (persisted in `localStorage`
-  under `authToken`), `refreshToken` (under `refreshToken`; if storage access throws, the session stays in memory only), `user` (`User` from `GET /auth/me`), `isAuthenticated`, `setTokens` (new login), `rotateTokens` (same session), `setToken` (legacy access-only), `setUser`,
+- **Session (`src/stores/session.ts`)**: Pinia setup store — `token` and `refreshToken` persisted atomically
+  in the `authSession` localStorage snapshot alongside a session id (unchanged on rotation).
+  Legacy `authToken` is read when the snapshot is absent; storage failures leave state in memory.
+  `storage` events and API boundaries synchronize state; external login/logout resets user data and
+  reloads the app to discard data of the previous session. Includes `user` (`User` from `GET /auth/me`), `isAuthenticated`, `setTokens` (new login), `rotateTokens` (same session), `setToken` (legacy access-only), `setUser`,
   `clear` (removes both tokens).
 - **Router (`src/router/`)**: `createAppRouter(history, guards)`; route names are constants in
   `src/router/names.ts` (`HOME_ROUTE`, `LOGIN_ROUTE`, `REGISTER_ROUTE`), re-exported from

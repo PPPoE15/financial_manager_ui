@@ -1,4 +1,5 @@
 import { createHttpClient } from '@/api/http'
+import { withSessionLock } from '@/auth/sessionLock'
 import { useSessionStore } from '@/stores/session'
 
 let onSessionExpired: () => void = () => {}
@@ -13,14 +14,22 @@ export function setSessionExpiredHandler(handler: () => void): void {
 }
 
 /** Общий HTTP-клиент приложения: токен из хранилища сессии, при неудачном продлении — сброс сессии и экран входа. */
-export const http = createHttpClient({
-  getToken: () => useSessionStore().token,
-  getRefreshToken: () => useSessionStore().refreshToken,
-  isSigningOut: () => useSessionStore().signingOut,
-  getGeneration: () => useSessionStore().generation,
-  onRefreshed: (pair) => useSessionStore().rotateTokens(pair),
-  onUnauthorized: () => {
-    useSessionStore().clear()
-    onSessionExpired()
-  },
-})
+export function createSessionHttpClient(
+  session: () => ReturnType<typeof useSessionStore> = useSessionStore,
+  expired: () => void = () => onSessionExpired(),
+) {
+  return createHttpClient({
+    getToken: () => session().token,
+    getRefreshToken: () => session().refreshToken,
+    isSigningOut: () => session().signingOut,
+    getGeneration: () => session().generation,
+    syncSession: () => session().sync(),
+    withSessionLock,
+    onRefreshed: (pair) => session().rotateTokens(pair),
+    onUnauthorized: () => {
+      session().clear()
+      expired()
+    },
+  })
+}
+export const http = createSessionHttpClient()

@@ -1,5 +1,6 @@
 import { useRoute, useRouter, type RouteLocationRaw } from 'vue-router'
 
+import { withSessionLock } from '@/auth/sessionLock'
 import { login } from '@/api/auth'
 import { HOME_ROUTE } from '@/router/names'
 import { useSessionStore } from '@/stores/session'
@@ -22,7 +23,7 @@ export function useSignIn(): (credentials: LoginRequest) => Promise<void> {
 
   return async (credentials) => {
     const tokens = await login(credentials)
-    session.setTokens(tokens)
+    await withSessionLock(async () => session.setTokens(tokens), true)
     await router.push(afterSignIn(route.query.redirect))
   }
 }

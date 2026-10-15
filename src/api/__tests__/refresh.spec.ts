@@ -26,6 +26,16 @@ function deferred() {
 const originalAdapter = http.defaults.adapter
 let expired = vi.fn()
 beforeEach(() => {
+  let queue = Promise.resolve()
+  vi.stubGlobal('navigator', {
+    locks: {
+      request: (_name: string, action: () => Promise<void>) => {
+        const next = queue.then(action)
+        queue = next.catch(() => {})
+        return next
+      },
+    },
+  })
   localStorage.clear()
   setActivePinia(createPinia())
   useSessionStore().setTokens({ ...pair, access_token: 'old-access', refresh_token: 'old-refresh' })
@@ -33,6 +43,7 @@ beforeEach(() => {
   setSessionExpiredHandler(expired)
 })
 afterEach(() => {
+  vi.unstubAllGlobals()
   http.defaults.adapter = originalAdapter
 })
 
