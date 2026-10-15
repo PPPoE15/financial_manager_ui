@@ -5,6 +5,7 @@ import { createPinia, setActivePinia } from 'pinia'
 import { getStartingBalance } from '@/api/balance'
 import { listTransactions } from '@/api/transactions'
 import RecentTransactionsCard from '@/components/transactions/RecentTransactionsCard.vue'
+import TransactionEntryDialog from '@/components/transactions/TransactionEntryDialog.vue'
 import { getBudgetStructure } from '@/api/budget'
 import BudgetStructureCard from '@/components/budget/BudgetStructureCard.vue'
 import CategoryEditorDialog from '@/components/categories/CategoryEditorDialog.vue'
@@ -17,6 +18,44 @@ vi.mock('@/api/budget', () => ({ getBudgetStructure: vi.fn() }))
 vi.mock('@/api/balance', () => ({ getStartingBalance: vi.fn(), createStartingBalance: vi.fn() }))
 
 describe('HomeView', () => {
+  it.each(['income', 'outcome'] as const)(
+    'открывает ввод %s и обновляет карточки и таблицу после сохранения',
+    async (type) => {
+      const wrapper = mount(HomeView, {
+        global: { stubs: { TransactionEntryDialog: true, FirstStepDialog: true } },
+      })
+      await flushPromises()
+      await wrapper
+        .get(`[aria-label="${type === 'income' ? 'Добавить доход' : 'Добавить расход'}"]`)
+        .trigger('click')
+      const entry = wrapper.getComponent(TransactionEntryDialog)
+      expect(entry.props('type')).toBe(type)
+      vi.mocked(listTransactions).mockClear()
+      vi.mocked(getBudgetStructure).mockClear()
+      entry.vm.$emit('saved')
+      await flushPromises()
+      expect(listTransactions).toHaveBeenCalledWith('income')
+      expect(listTransactions).toHaveBeenCalledWith('outcome')
+      expect(getBudgetStructure).toHaveBeenCalledTimes(1)
+      entry.vm.$emit('close')
+      await flushPromises()
+      expect(wrapper.findComponent(TransactionEntryDialog).exists()).toBe(false)
+      wrapper.unmount()
+    },
+  )
+  it('переключает пустое окно ввода на редактирование категорий без двух диалогов', async () => {
+    const wrapper = mount(HomeView, {
+      global: {
+        stubs: { TransactionEntryDialog: true, CategoryEditorDialog: true, FirstStepDialog: true },
+      },
+    })
+    await wrapper.get('[aria-label="Добавить расход"]').trigger('click')
+    wrapper.getComponent(TransactionEntryDialog).vm.$emit('editCategories')
+    await flushPromises()
+    expect(wrapper.findComponent(TransactionEntryDialog).exists()).toBe(false)
+    expect(wrapper.findComponent(CategoryEditorDialog).exists()).toBe(true)
+    wrapper.unmount()
+  })
   beforeEach(() => {
     setActivePinia(createPinia())
     vi.mocked(listTransactions).mockResolvedValue([])

@@ -39,6 +39,41 @@ session.user = {
   email: 'preview@example.com',
 }
 http.defaults.adapter = async (config) => {
+  // FM-51: ?entry — заполнение окна, ?entry&partial — ошибка второй строки,
+  // ?entry&noCategories / ?entry&categoryError / ?entry&categoryLoading — служебные состояния.
+  if (params.has('entry') && config.url === '/categories') {
+    if (params.has('categoryLoading')) await new Promise(() => {})
+    if (params.has('categoryError')) throw new Error('Ошибка загрузки статей на стенде')
+    const content = params.has('noCategories')
+      ? []
+      : ['Продукты', 'ЖКХ', 'Транспорт'].map((name, index) => ({
+          uid: `entry-${index}`,
+          name,
+          category_type: config.params.category_type,
+          money_plan: null,
+          description: null,
+        }))
+    return {
+      config,
+      status: 200,
+      statusText: 'OK',
+      headers: {},
+      data: { content, total: content.length },
+    }
+  }
+  if (params.has('entry') && config.url === '/transactions' && config.method === 'post') {
+    const body = JSON.parse(config.data)
+    if (params.has('partial') && body.category_uid === 'entry-1') {
+      throw { isAxiosError: true, response: { status: 409, data: { code: 'FM-409202' } } }
+    }
+    return {
+      config,
+      status: 201,
+      statusText: 'Created',
+      headers: {},
+      data: { uid: 'created', ...body, category: { uid: body.category_uid, name: 'Продукты' } },
+    }
+  }
   if (config.url === '/transactions') {
     const type = config.params.transaction_type
     requests[type] = (requests[type] ?? 0) + 1
