@@ -51,6 +51,29 @@ afterEach(() => {
 })
 
 describe('Ввод транзакций', () => {
+  it.each(['income', 'outcome'] as const)(
+    'показывает полное название выбранной статьи %s даже при узком поле',
+    async (type) => {
+      const name = 'Очень длинное название статьи, которое не помещается в поле'
+      vi.mocked(listCategories).mockResolvedValue([
+        { uid: 'food', name, category_type: type, money_plan: null, description: null },
+      ])
+      await open(type)
+      const select = rows()[0]!.get('select')
+      await select.setValue('food')
+      expect(select.attributes('title')).toBe(name)
+      await select.setValue('')
+      expect(select.attributes('title')).toBeUndefined()
+    },
+  )
+  it('сохраняет доступный статус загрузки до получения категорий', async () => {
+    vi.mocked(listCategories).mockReturnValue(new Promise(() => {}))
+    await open()
+    expect(dialog().get('[role="status"]').text()).toBe('Загрузка…')
+    expect(dialog().find('button[type="submit"]').exists()).toBe(false)
+    expect(dialog().get('[aria-label="Закрыть"]').element).toBe(document.activeElement)
+  })
+
   it('позволяет отменить начатую строку, очистив категорию, и сохранить остальные', async () => {
     await open()
     await fill()
