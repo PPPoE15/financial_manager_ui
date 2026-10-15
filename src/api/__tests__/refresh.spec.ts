@@ -164,4 +164,59 @@ describe('продление сессии', () => {
     await logout()
     expect(bodies).toEqual([{ refresh_token: 'old-refresh' }, { refresh_token: 'new-refresh' }])
   })
+  it('выход не допускает ротацию от параллельного 401 после отправки logout', async () => {
+    const logoutStarted = deferred()
+    const finishLogout = deferred()
+    const active = new Set(['old-refresh'])
+    const refresh = vi.fn()
+    http.defaults.adapter = async (config) => {
+      if (config.url === '/token/refresh') {
+        refresh()
+        active.delete('old-refresh')
+        active.add(pair.refresh_token)
+        return reply(config, 200, pair)
+      }
+      if (config.url === '/logout') {
+        logoutStarted.resolve()
+        await finishLogout.promise
+        active.delete(JSON.parse(config.data).refresh_token)
+        return reply(config, 204)
+      }
+      await logoutStarted.promise
+      return reply(config, config.headers.get('Authorization') === 'Bearer old-access' ? 401 : 200)
+    }
+    const request = Promise.allSettled([http.get('/parallel')])
+    const signingOut = logout()
+    await logoutStarted.promise
+    await request
+    finishLogout.resolve()
+    await signingOut
+    expect(refresh).not.toHaveBeenCalled()
+    expect([...active]).toEqual([])
+  })
+
+  it('выход ждёт начатую ротацию и отзывает её результат', async () => {
+    const refreshStarted = deferred()
+    const finishRefresh = deferred()
+    const revoked: string[] = []
+    http.defaults.adapter = async (config) => {
+      if (config.url === '/token/refresh') {
+        refreshStarted.resolve()
+        await finishRefresh.promise
+        return reply(config, 200, pair)
+      }
+      if (config.url === '/logout') {
+        revoked.push(JSON.parse(config.data).refresh_token)
+        return reply(config, 204)
+      }
+      return reply(config, config.headers.get('Authorization') === 'Bearer old-access' ? 401 : 200)
+    }
+    const request = Promise.allSettled([http.get('/parallel')])
+    await refreshStarted.promise
+    const signingOut = logout()
+    expect(revoked).toEqual([])
+    finishRefresh.resolve()
+    await Promise.all([request, signingOut])
+    expect(revoked).toEqual(['new-refresh'])
+  })
 })

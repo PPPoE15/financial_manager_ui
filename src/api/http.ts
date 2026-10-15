@@ -30,6 +30,7 @@ export interface HttpClientOptions {
   onUnauthorized: () => void
   getRefreshToken?: () => string | null
   getGeneration?: () => number
+  isSigningOut?: () => boolean
   onRefreshed?: (pair: TokenResponse) => void
 }
 
@@ -43,6 +44,7 @@ export function createHttpClient({
   onUnauthorized,
   getRefreshToken = () => null,
   getGeneration = () => 0,
+  isSigningOut = () => false,
   onRefreshed = () => {},
 }: HttpClientOptions): SessionHttpClient {
   const http = axios.create() as SessionHttpClient
@@ -67,6 +69,9 @@ export function createHttpClient({
     if (!(error instanceof AxiosError) || error.response?.status !== 401) throw error
     const config = error.config
     if (!config || config.skipAuth || !config.sessionToken) throw error
+    // Во время выхода только сам logout может обновлять пару. Уже начатую ротацию
+    // logout дождётся перед отзывом, остальные 401 не должны создавать новый refresh.
+    if (isSigningOut() && !config.refreshTokenBody) throw error
     const generation = config.sessionGeneration
     if (generation !== getGeneration() || !getToken()) throw error
     if (config.sessionRetried || !getRefreshToken()) {
@@ -103,6 +108,7 @@ export function createHttpClient({
       await pending.promise
     }
     if (generation !== getGeneration() || !getToken()) throw error
+    if (isSigningOut() && !config.refreshTokenBody) throw error
     return http.request(config)
   })
 

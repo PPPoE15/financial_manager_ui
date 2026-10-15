@@ -16,6 +16,7 @@ export function setSessionExpiredHandler(handler: () => void): void {
 export const http = createHttpClient({
   getToken: () => useSessionStore().token,
   getRefreshToken: () => useSessionStore().refreshToken,
+  isSigningOut: () => useSessionStore().signingOut,
   getGeneration: () => useSessionStore().generation,
   onRefreshed: (pair) => useSessionStore().rotateTokens(pair),
   onUnauthorized: () => {

@@ -48,6 +48,7 @@ Vue 3 + TypeScript + Vite SPA («Финансовый менеджер»), Pinia
   Adds `Authorization: Bearer <token>`; a 401 on an authenticated request refreshes the pair through
   `POST /auth/token/refresh` and retries once. Concurrent and late 401s share the rotated pair.
   Missing refresh, failed refresh (including network/5xx), or a second 401 calls `onUnauthorized`.
+  While logout is in progress, other 401s cannot start a refresh; logout alone may renew expired access.
   The session generation prevents old refresh responses/401s from replacing or clearing a newer login. Requests made without a session (login, registration) pass `skipAuth: true`:
   no token is attached even if a stale one is stored, and their 401 (wrong credentials) is left to
   the caller. `client.ts` exports the app-wide `http` wired to the session store: failed renewal clears the

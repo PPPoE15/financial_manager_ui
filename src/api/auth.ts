@@ -33,6 +33,8 @@ export async function updateCurrentUser(body: UserUpdate): Promise<User> {
 
 /** Отзывает актуальный refresh; при истёкшем access клиент сначала обновит пару. */
 export async function logout(): Promise<void> {
+  // Барьер снимается только clear/setTokens: параллельный 401 больше не ротирует токены.
+  useSessionStore().signingOut = true
   await http.waitForRefresh()
   if (!useSessionStore().refreshToken) return
   await http.post('/logout', {}, { api: 'auth', refreshTokenBody: true })

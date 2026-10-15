@@ -35,12 +35,14 @@ export const useSessionStore = defineStore('session', () => {
   const refreshToken = ref<string | null>(readStoredToken(REFRESH_STORAGE_KEY))
   // Меняется при входе/выходе, но не при ротации токенов той же сессии.
   const generation = ref(0)
+  const signingOut = ref(false)
   const user = ref<User | null>(null)
 
   const isAuthenticated = computed(() => token.value !== null)
 
   function setToken(value: string): void {
     generation.value++
+    signingOut.value = false
     refreshToken.value = null
     writeStoredToken(null, REFRESH_STORAGE_KEY)
     token.value = value
@@ -56,6 +58,7 @@ export const useSessionStore = defineStore('session', () => {
 
   function setTokens(pair: TokenResponse): void {
     generation.value++
+    signingOut.value = false
     user.value = null
     rotateTokens(pair)
   }
@@ -66,6 +69,7 @@ export const useSessionStore = defineStore('session', () => {
 
   function clear(): void {
     generation.value++
+    signingOut.value = false
     token.value = null
     refreshToken.value = null
     writeStoredToken(null, REFRESH_STORAGE_KEY)
@@ -77,6 +81,7 @@ export const useSessionStore = defineStore('session', () => {
     token,
     refreshToken,
     generation,
+    signingOut,
     user,
     isAuthenticated,
     setToken,
