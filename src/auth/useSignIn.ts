@@ -22,7 +22,7 @@ export function useSignIn(): (credentials: LoginRequest) => Promise<void> {
 
   return async (credentials) => {
     const tokens = await login(credentials)
-    session.setToken(tokens.access_token)
+    session.setTokens(tokens)
     await router.push(afterSignIn(route.query.redirect))
   }
 }

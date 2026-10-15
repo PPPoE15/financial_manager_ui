@@ -12,9 +12,12 @@ export function setSessionExpiredHandler(handler: () => void): void {
   onSessionExpired = handler
 }
 
-/** Общий HTTP-клиент приложения: токен из хранилища сессии, при 401 — сброс сессии и экран входа. */
+/** Общий HTTP-клиент приложения: токен из хранилища сессии, при неудачном продлении — сброс сессии и экран входа. */
 export const http = createHttpClient({
   getToken: () => useSessionStore().token,
+  getRefreshToken: () => useSessionStore().refreshToken,
+  getGeneration: () => useSessionStore().generation,
+  onRefreshed: (pair) => useSessionStore().rotateTokens(pair),
   onUnauthorized: () => {
     useSessionStore().clear()
     onSessionExpired()

@@ -76,3 +76,25 @@ describe('useSessionStore', () => {
     expect(session.token).toBeNull()
   })
 })
+
+describe('пара токенов', () => {
+  it('сохраняет, восстанавливает и очищает оба токена', () => {
+    localStorage.clear()
+    setActivePinia(createPinia())
+    const session = useSessionStore()
+    session.setTokens({
+      access_token: 'access',
+      refresh_token: 'refresh',
+      token_type: 'bearer',
+      expires_in: 900,
+    })
+    setActivePinia(createPinia())
+    const restored = useSessionStore()
+    expect(restored.token).toBe('access')
+    expect(restored.refreshToken).toBe('refresh')
+    restored.clear()
+    setActivePinia(createPinia())
+    expect(useSessionStore().token).toBeNull()
+    expect(useSessionStore().refreshToken).toBeNull()
+  })
+})

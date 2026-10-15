@@ -1,3 +1,4 @@
+import { useSessionStore } from '@/stores/session'
 import { http } from '@/api/client'
 import type { LoginRequest, RegistrationRequest, TokenResponse } from '@/types/auth'
 import type { User, UserUpdate } from '@/types/user'
@@ -28,4 +29,11 @@ export async function getCurrentUser(): Promise<User> {
 export async function updateCurrentUser(body: UserUpdate): Promise<User> {
   const { data } = await http.patch<User>('/me', body, { api: 'auth' })
   return data
+}
+
+/** Отзывает актуальный refresh; при истёкшем access клиент сначала обновит пару. */
+export async function logout(): Promise<void> {
+  await http.waitForRefresh()
+  if (!useSessionStore().refreshToken) return
+  await http.post('/logout', {}, { api: 'auth', refreshTokenBody: true })
 }

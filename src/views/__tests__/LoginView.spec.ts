@@ -11,7 +11,12 @@ import LoginView from '@/views/LoginView.vue'
 
 vi.mock('@/api/auth', () => ({ login: vi.fn(), register: vi.fn(), getCurrentUser: vi.fn() }))
 
-const tokens = { access_token: 'access-token', token_type: 'bearer' }
+const tokens = {
+  access_token: 'access-token',
+  refresh_token: 'refresh-token',
+  token_type: 'bearer',
+  expires_in: 900,
+}
 const user = {
   uid: '3fa85f64-5717-4562-b3fc-2c963f66afa6',
   name: 'Артём',
@@ -141,6 +146,7 @@ describe('LoginView', () => {
 
       expect(login).toHaveBeenCalledWith({ email: 'name@example.com', password: 's3cret-Passw0rd' })
       expect(useSessionStore().token).toBe('access-token')
+      expect(useSessionStore().refreshToken).toBe('refresh-token')
       await vi.waitFor(() => expect(router.currentRoute.value.name).toBe(HOME_ROUTE))
     })
 
@@ -182,7 +188,9 @@ describe('LoginView', () => {
       expect(message.text()).toBe('Неверный email или пароль')
       expect(message.attributes('role')).toBe('alert')
       expect(alert).not.toHaveBeenCalled()
-      expect((field(w, 'Электронная почта').element as HTMLInputElement).value).toBe('name@example.com')
+      expect((field(w, 'Электронная почта').element as HTMLInputElement).value).toBe(
+        'name@example.com',
+      )
       expect((field(w, 'Пароль').element as HTMLInputElement).value).toBe('s3cret-Passw0rd')
       expect(useSessionStore().token).toBeNull()
       expect(router.currentRoute.value.name).toBe(LOGIN_ROUTE)
@@ -272,6 +280,7 @@ describe('LoginView', () => {
       })
       expect(login).toHaveBeenCalledWith({ email: 'name@example.com', password: 's3cret-Passw0rd' })
       expect(useSessionStore().token).toBe('access-token')
+      expect(useSessionStore().refreshToken).toBe('refresh-token')
       await vi.waitFor(() => expect(router.currentRoute.value.name).toBe(HOME_ROUTE))
     })
 
@@ -290,7 +299,9 @@ describe('LoginView', () => {
       for (const label of ['Пароль', 'Подтвердите пароль']) {
         expect((field(w, label).element as HTMLInputElement).value).toBe('s3cret-Passw0rd')
       }
-      expect((field(w, 'Электронная почта').element as HTMLInputElement).value).toBe('name@example.com')
+      expect((field(w, 'Электронная почта').element as HTMLInputElement).value).toBe(
+        'name@example.com',
+      )
     })
 
     it('блокирует повторную регистрацию до завершения автоматического входа', async () => {

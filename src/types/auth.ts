@@ -11,11 +11,10 @@ export interface RegistrationRequest {
   password_confirmation: string
 }
 
-/**
- * Ответ `POST /auth/token`. По контракту в нём есть ещё `refresh_token` и `expires_in`,
- * их сервис начнёт отдавать в FM-16, а фронт — использовать в FM-17.
- */
+/** Пара токенов из `POST /auth/token` и `POST /auth/token/refresh`. */
 export interface TokenResponse {
   access_token: string
+  refresh_token: string
   token_type: string
+  expires_in: number
 }
