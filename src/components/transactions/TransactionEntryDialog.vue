@@ -181,6 +181,8 @@ const fieldClass =
                       class="mb-1 block text-caption sm:sr-only"
                       >Категория</label
                     >
+                    <!-- TODO(FM-60): подобрать место для полной подсказки «Выберите категорию»
+                         в нативном select: на широком экране она обрезается, как и до смены темы. -->
                     <select
                       :id="`${id}-${row.key}-category`"
                       :value="row.category"
