@@ -51,6 +51,19 @@ afterEach(() => {
 })
 
 describe('Ввод транзакций', () => {
+  it('позволяет отменить начатую строку, очистив категорию, и сохранить остальные', async () => {
+    await open()
+    await fill()
+    await fill(1, '123')
+    const cancelled = rows()[1]!
+    expect(cancelled.get('option[value=""]').attributes('disabled')).toBeUndefined()
+    await cancelled.get('select').setValue('')
+    await cancelled.get('input[inputmode="numeric"]').setValue('')
+    await save()
+    expect(createTransaction).toHaveBeenCalledTimes(1)
+    expect(createTransaction).toHaveBeenCalledWith(expect.objectContaining({ money_sum: 4990 }))
+    expect(wrapper.emitted('close')).toHaveLength(1)
+  })
   it.each(['income', 'outcome'] as const)(
     'загружает категории %s, ставит сегодня и сохраняет выбранную дату с местным временем',
     async (type) => {

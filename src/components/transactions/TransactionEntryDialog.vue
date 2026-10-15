@@ -192,7 +192,7 @@ const fieldClass =
                       "
                       @change="update(row, 'category', ($event.target as HTMLSelectElement).value)"
                     >
-                      <option value="" disabled>Выберите категорию</option>
+                      <option value="">Выберите категорию</option>
                       <option
                         v-for="category in categories"
                         :key="category.uid"
