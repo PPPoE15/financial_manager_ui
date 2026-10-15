@@ -63,7 +63,9 @@ http.defaults.adapter = async (config) => {
           }
         : config.url === '/categories'
           ? { content: [], total: 0 }
-          : { amount: 0 },
+          : config.url === '/transactions'
+            ? { content: [], total: 0 }
+            : { amount: 0 },
   }
 }
 
