@@ -141,6 +141,12 @@ Vue 3 + TypeScript + Vite SPA («Финансовый менеджер»), Pinia
   field, or first field for a row-level error) scrolled into view, or to «Сохранить» for a general error.
   Tests mount the dialog with a real Teleport (the teleport stub re-creates the window markup on updates,
   detaching elements found earlier).
+- **Transaction entry (`src/transactions/useTransactionEntry.ts`, `TransactionEntryDialog`)**: FM-51,
+  opened by either recent-card `add(type)` event in HomeView. Loads categories of that type, keeps a
+  trailing empty row, validates before POST, combines the selected date with current local time.
+  Saved rows disappear; failed rows retain input and their error. The `saved` event reloads both recent
+  cards and the budget table even after partial success. `editCategories` first unmounts the entry
+  dialog, then opens the budget card's editor. Figma/PDF references and agreed states: `docs/transaction-entry.md`.
 - **Money (`src/utils/money.ts`)**: `formatMoney(value)` — app-wide ₽ formatter for integer roubles:
   `10 000 ₽` with NBSP grouping (also for 4-digit numbers, unlike `Intl` ru-RU), `−` for negatives,
   `null` → `MISSING_VALUE` («—»).

@@ -23,12 +23,14 @@ function onCategoriesSaved() {
 // Окно «Редактирование категорий» (FM-42): открывается ссылкой в шапке карточки, как в макете;
 // после создания статей таблица перезапрашивается.
 const editorOpen = ref(false)
+const editorButton = ref<HTMLButtonElement | null>(null)
 
-function openEditor(event: MouseEvent) {
+function openEditor() {
   // Safari не фокусирует кнопку мышью: редактор должен запомнить именно кнопку открытия.
-  if (event.currentTarget instanceof HTMLElement) event.currentTarget.focus()
+  editorButton.value?.focus()
   editorOpen.value = true
 }
+defineExpose({ reload, openEditor })
 
 const types: { value: TransactionType; label: string }[] = [
   { value: 'outcome', label: 'Расходы' },
@@ -59,6 +61,7 @@ const controlFocus =
       <!-- «Редактировать категории» в макете — подпись 12px в правом верхнем углу карточки;
              по смыслу это кнопка: открывает окно, а не переходит на страницу -->
       <button
+        ref="editorButton"
         type="button"
         class="min-h-control rounded px-1 text-caption text-ink-secondary hover:text-ink"
         :class="controlFocus"

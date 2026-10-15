@@ -1,14 +1,30 @@
 <script setup lang="ts">
-import { computed, useTemplateRef } from 'vue'
+import { computed, nextTick, ref, useTemplateRef } from 'vue'
 
 import BudgetStructureCard from '@/components/budget/BudgetStructureCard.vue'
 import RecentTransactionsCard from '@/components/transactions/RecentTransactionsCard.vue'
+import TransactionEntryDialog from '@/components/transactions/TransactionEntryDialog.vue'
 import FirstStepDialog from '@/components/firstStep/FirstStepDialog.vue'
 import { useSessionStore } from '@/stores/session'
+import type { TransactionType } from '@/types/budget'
 
 const session = useSessionStore()
 const incomeCard = useTemplateRef('incomeCard')
 const outcomeCard = useTemplateRef('outcomeCard')
+const budgetCard = useTemplateRef('budgetCard')
+const entryType = ref<TransactionType | null>(null)
+
+function onTransactionsSaved() {
+  reloadRecentTransactions()
+  void budgetCard.value?.reload()
+}
+
+async function editCategories() {
+  entryType.value = null
+  // Сначала снять inert старого окна и вернуть фокус, затем открыть редактор.
+  await nextTick()
+  budgetCard.value?.openEditor()
+}
 
 function reloadRecentTransactions() {
   void incomeCard.value?.reload()
@@ -34,9 +50,8 @@ const greeting = computed(() =>
              На узком экране пустое место скрыто; сами показатели появятся отдельно. -->
         <div aria-hidden="true" class="mb-4 hidden h-[112.5px] xl:block" />
         <div class="grid min-w-0 gap-4 sm:grid-cols-2 xl:grid-cols-1 2xl:grid-cols-2">
-          <!-- Открытие окна ввода подключается отдельной задачей; карточки уже отдают add(type). -->
-          <RecentTransactionsCard ref="incomeCard" type="income" />
-          <RecentTransactionsCard ref="outcomeCard" type="outcome" />
+          <RecentTransactionsCard ref="incomeCard" type="income" @add="entryType = $event" />
+          <RecentTransactionsCard ref="outcomeCard" type="outcome" @add="entryType = $event" />
         </div>
       </div>
       <div
@@ -44,7 +59,7 @@ const greeting = computed(() =>
         tabindex="-1"
         class="min-w-0 scroll-mt-4 rounded focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus xl:col-start-2"
       >
-        <BudgetStructureCard @categories-saved="reloadRecentTransactions" />
+        <BudgetStructureCard ref="budgetCard" @categories-saved="reloadRecentTransactions" />
       </div>
     </div>
     <!-- Окно поверх главной, пока не заполнены имя или стартовый остаток. Приветствие обновляется
@@ -53,5 +68,12 @@ const greeting = computed(() =>
     <!-- TODO(FM-2): с появлением других защищённых экранов перенести окно в AppLayout, иначе вход по прямой
          ссылке на них пропустит «Первый шаг». -->
     <FirstStepDialog />
+    <TransactionEntryDialog
+      v-if="entryType"
+      :type="entryType"
+      @saved="onTransactionsSaved"
+      @close="entryType = null"
+      @edit-categories="editCategories"
+    />
   </div>
 </template>

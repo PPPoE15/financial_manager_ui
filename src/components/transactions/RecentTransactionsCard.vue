@@ -8,7 +8,12 @@ import type { Transaction } from '@/types/transaction'
 import { formatMoney } from '@/utils/money'
 
 const props = defineProps<{ type: TransactionType }>()
-defineEmits<{ add: [type: TransactionType] }>()
+const emit = defineEmits<{ add: [type: TransactionType] }>()
+function add(event: MouseEvent) {
+  // Safari не фокусирует кнопку при клике: окно должно вернуть фокус именно сюда.
+  if (event.currentTarget instanceof HTMLElement) event.currentTarget.focus()
+  emit('add', props.type)
+}
 const titleId = useId()
 const income = computed(() => props.type === 'income')
 const records = ref<Transaction[]>([])
@@ -59,7 +64,7 @@ defineExpose({ reload })
         type="button"
         :aria-label="income ? 'Добавить доход' : 'Добавить расход'"
         class="flex size-[38px] shrink-0 items-center justify-center rounded text-xl text-ink-secondary hover:bg-field-hover hover:text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
-        @click="$emit('add', type)"
+        @click="add"
       >
         <span aria-hidden="true">+</span>
       </button>
