@@ -11,7 +11,14 @@ import type { TransactionType } from '@/types/budget'
 // FM-58: «Новый дизайн», Главная 230:422, карточка 230:464 (Figma через браузер).
 // Выбор года/типа и состояния без данных сохраняют согласованную адаптацию FM-28;
 // контролы используют тему FM-55, отдельного макета этих состояний нет.
+const emit = defineEmits<{ categoriesSaved: [] }>()
+
 const { year, categoryType, data, loading, failed, reload } = useBudgetStructure()
+
+function onCategoriesSaved() {
+  void reload()
+  emit('categoriesSaved')
+}
 
 // Окно «Редактирование категорий» (FM-42): открывается ссылкой в шапке карточки, как в макете;
 // после создания статей таблица перезапрашивается.
@@ -135,6 +142,10 @@ const controlFocus =
       <BudgetStructureTable v-else-if="data" :data="data" />
     </div>
 
-    <CategoryEditorDialog v-if="editorOpen" @saved="reload" @close="editorOpen = false" />
+    <CategoryEditorDialog
+      v-if="editorOpen"
+      @saved="onCategoriesSaved"
+      @close="editorOpen = false"
+    />
   </section>
 </template>
