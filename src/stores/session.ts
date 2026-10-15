@@ -7,6 +7,13 @@ export const TOKEN_STORAGE_KEY = 'authToken'
 export const REFRESH_STORAGE_KEY = 'refreshToken'
 export const SESSION_STORAGE_KEY = 'authSession'
 
+/** getRandomValues доступен и на обычном HTTP, в отличие от randomUUID. */
+function newSessionId(): string {
+  return Array.from(crypto.getRandomValues(new Uint32Array(4)), (n) =>
+    n.toString(16).padStart(8, '0'),
+  ).join('')
+}
+
 interface StoredSession {
   id: string
   token: string | null
@@ -49,7 +56,7 @@ export const useSessionStore = defineStore('session', () => {
   }
   const token = ref(initial?.token ?? null)
   const refreshToken = ref(initial?.refreshToken ?? null)
-  const generation = ref(initial?.id ?? crypto.randomUUID())
+  const generation = ref(initial?.id ?? newSessionId())
   const signingOut = ref(false)
   const user = ref<User | null>(null)
   const externalChange = ref(0)
@@ -91,7 +98,7 @@ export const useSessionStore = defineStore('session', () => {
     if (raw === lastStored) return
     lastStored = raw
     const next = decode(raw)
-    const id = next?.id ?? crypto.randomUUID()
+    const id = next?.id ?? newSessionId()
     if (id !== generation.value) {
       generation.value = id
       user.value = null
@@ -108,7 +115,7 @@ export const useSessionStore = defineStore('session', () => {
   onScopeDispose(() => window.removeEventListener('storage', onStorage))
 
   function setToken(value: string): void {
-    generation.value = crypto.randomUUID()
+    generation.value = newSessionId()
     signingOut.value = false
     token.value = value
     refreshToken.value = null
@@ -121,7 +128,7 @@ export const useSessionStore = defineStore('session', () => {
     persist()
   }
   function setTokens(pair: TokenResponse): void {
-    generation.value = crypto.randomUUID()
+    generation.value = newSessionId()
     signingOut.value = false
     user.value = null
     rotateTokens(pair)
@@ -130,7 +137,7 @@ export const useSessionStore = defineStore('session', () => {
     user.value = value
   }
   function clear(): void {
-    generation.value = crypto.randomUUID()
+    generation.value = newSessionId()
     signingOut.value = false
     token.value = null
     refreshToken.value = null
