@@ -61,7 +61,7 @@ export function createHttpClient({
     config.sessionRefreshToken = getRefreshToken()
     config.headers.delete('Authorization')
     if (token) config.headers.set('Authorization', `Bearer ${token}`)
-    if (config.refreshTokenBody) config.data = JSON.stringify({ refresh_token: getRefreshToken() })
+    if (config.refreshTokenBody) config.data = { refresh_token: getRefreshToken() }
     return config
   })
 

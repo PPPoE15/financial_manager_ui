@@ -156,13 +156,16 @@ describe('продление сессии', () => {
 
   it('logout после истечения access отзывает новый refresh из ротированной пары', async () => {
     const bodies: unknown[] = []
+    const contentTypes: unknown[] = []
     http.defaults.adapter = async (config) => {
       if (config.url === '/token/refresh') return reply(config, 200, pair)
       bodies.push(JSON.parse(config.data))
+      contentTypes.push(config.headers.get('Content-Type'))
       return reply(config, config.headers.get('Authorization') === 'Bearer old-access' ? 401 : 204)
     }
     await logout()
     expect(bodies).toEqual([{ refresh_token: 'old-refresh' }, { refresh_token: 'new-refresh' }])
+    expect(contentTypes).toEqual(['application/json', 'application/json'])
   })
   it('выход не допускает ротацию от параллельного 401 после отправки logout', async () => {
     const logoutStarted = deferred()
