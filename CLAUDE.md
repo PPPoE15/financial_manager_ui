@@ -41,21 +41,31 @@ keeping the path like nginx does. When pointing the env vars at a backend direct
 Vue 3 + TypeScript + Vite SPA («Финансовый менеджер»), Pinia, Vue Router, Tailwind 3, Vitest +
 `@vue/test-utils`. All components use `<script setup lang="ts">`. Path alias `@` → `src/`.
 
-- **HTTP (`src/api/`)**: `http.ts` — `createHttpClient({ getToken, onUnauthorized })`, one axios
+- **HTTP (`src/api/`)**: `http.ts` — `createHttpClient({ getToken, getRefreshToken, getGeneration, onRefreshed, onUnauthorized })`, one axios
   instance for both backends. Base URL is chosen per request by the custom `api` config field:
   `'transaction'` (default, `VITE_API_URL`, fallback `/transaction`) or `'auth'`
   (`VITE_AUTH_API_URL`, fallback `/auth`), e.g. `http.post('/token', body, { api: 'auth' })`.
-  Adds `Authorization: Bearer <token>`; a 401 on a request that carried a token calls
-  `onUnauthorized`. Requests made without a session (login, registration) pass `skipAuth: true`:
+  Adds `Authorization: Bearer <token>`; a 401 on an authenticated request refreshes the pair through
+  `POST /auth/token/refresh` and retries once. Concurrent and late 401s share the rotated pair.
+  Missing refresh, failed refresh (including network/5xx), or a second 401 calls `onUnauthorized`.
+  While logout is in progress, other 401s cannot start a refresh; logout alone may renew expired access.
+  Refresh and logout use the shared `fm-session` Web Lock across tabs. Each operation re-reads
+  the atomic `authSession` snapshot under the lock, so delayed storage events cannot cause duplicate
+  refreshes. Login commits under the same lock. Without Web Locks (HTTPS/localhost required), refresh
+  fails closed to login; logout still sends its token but cannot renew expired access.
+  The session generation prevents old refresh responses/401s from replacing or clearing a newer login. Requests made without a session (login, registration) pass `skipAuth: true`:
   no token is attached even if a stale one is stored, and their 401 (wrong credentials) is left to
-  the caller. `client.ts` exports the app-wide `http` wired to the session store: a 401 clears the
+  the caller. `client.ts` exports the app-wide `http` wired to the session store: failed renewal clears the
   session and calls the handler set via `setSessionExpiredHandler` — `main.ts` sets it to
   `redirectToLogin(router)`. `src/api/` must not import the router (guards in `src/router/guards.ts`
   may call the API, which would create an import cycle). API functions should import `http` from
   `@/api/client`.
-- **Session (`src/stores/session.ts`)**: Pinia setup store — `token` (persisted in `localStorage`
-  under `authToken`; if storage access throws, the session stays in memory only), `user` (`User` from `GET /auth/me`), `isAuthenticated`, `setToken`, `setUser`,
-  `clear`.
+- **Session (`src/stores/session.ts`)**: Pinia setup store — `token` and `refreshToken` persisted atomically
+  in the `authSession` localStorage snapshot alongside a session id (unchanged on rotation).
+  Legacy `authToken` is read when the snapshot is absent; storage failures leave state in memory.
+  `storage` events and API boundaries synchronize state; external login/logout resets user data and
+  reloads the app to discard data of the previous session. Includes `user` (`User` from `GET /auth/me`), `isAuthenticated`, `setTokens` (new login), `rotateTokens` (same session), `setToken` (legacy access-only), `setUser`,
+  `clear` (removes both tokens).
 - **Router (`src/router/`)**: `createAppRouter(history, guards)`; route names are constants in
   `src/router/names.ts` (`HOME_ROUTE`, `LOGIN_ROUTE`, `REGISTER_ROUTE`), re-exported from
   `@/router` — guards import them from `names.ts` to avoid an import cycle. Global guards are
@@ -78,7 +88,7 @@ Vue 3 + TypeScript + Vite SPA («Финансовый менеджер»), Pinia
   `auth/validation.ts` — client-side checks mirroring `contracts/auth.openapi.yaml`;
   `auth/errors.ts` — `mapAuthError` turns a backend error into a form-level `message` and/or
   per-field `fields` (422 messages from pydantic are English, so field texts are our own);
-  `auth/useSignIn.ts` — login → `session.setToken` → `redirect` from the query (in-app paths only) or home. `LoginForm`/`RegistrationForm` share
+  `auth/useSignIn.ts` — login → `session.setTokens` → `redirect` from the query (in-app paths only) or home. `LoginForm`/`RegistrationForm` share
   `AuthFormLayout` (form-level error above the submit button, `novalidate`, button `loading` while
   the request is in flight — repeated submits are ignored). Registration signs in right after.
 - **Views (`src/views/`)**: routed pages. `LoginView` serves both `/login` and `/register` (mode
@@ -152,7 +162,7 @@ Vue 3 + TypeScript + Vite SPA («Финансовый менеджер»), Pinia
   `null` → `MISSING_VALUE` («—»).
 - **Shell (`src/components/layout/AppLayout.vue`)**: Figma Frame 8 sidebar — logo, menu (only
   «Обзор» so far), user block (initial instead of the mockup's photo — the API has no avatar) and
-  the «Выход» button (`auth/useSignOut.ts`: clears the session → `login`). No narrow mockup: below
+  the «Выход» button (`auth/useSignOut.ts`: waits for pending refresh → `POST /auth/logout` with the current refresh (also on retry) → clears both tokens even on error → `login`). No narrow mockup: below
   `lg` the sidebar becomes a top bar without the menu.
 - Tests live next to code in `__tests__/*.spec.ts` (type-checked via `tsconfig.vitest.json`).
 

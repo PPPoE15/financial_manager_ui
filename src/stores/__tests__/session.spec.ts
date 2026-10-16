@@ -76,3 +76,52 @@ describe('useSessionStore', () => {
     expect(session.token).toBeNull()
   })
 })
+
+describe('пара токенов', () => {
+  it('сохраняет, восстанавливает и очищает оба токена', () => {
+    localStorage.clear()
+    setActivePinia(createPinia())
+    const session = useSessionStore()
+    session.setTokens({
+      access_token: 'access',
+      refresh_token: 'refresh',
+      token_type: 'bearer',
+      expires_in: 900,
+    })
+    setActivePinia(createPinia())
+    const restored = useSessionStore()
+    expect(restored.token).toBe('access')
+    expect(restored.refreshToken).toBe('refresh')
+    restored.clear()
+    setActivePinia(createPinia())
+    expect(useSessionStore().token).toBeNull()
+    expect(useSessionStore().refreshToken).toBeNull()
+  })
+})
+
+it('на обычном HTTP без randomUUID сохраняет вход и полностью очищает сессию', () => {
+  const getRandomValues = crypto.getRandomValues.bind(crypto)
+  vi.stubGlobal('crypto', { getRandomValues })
+  try {
+    localStorage.clear()
+    setActivePinia(createPinia())
+    const session = useSessionStore()
+    session.setTokens({
+      access_token: 'A',
+      refresh_token: 'R',
+      token_type: 'bearer',
+      expires_in: 900,
+    })
+    const loginId = session.generation
+    expect(session.token).toBe('A')
+    session.clear()
+    expect(session.generation).not.toBe(loginId)
+    expect(session.token).toBeNull()
+    expect(session.refreshToken).toBeNull()
+    setActivePinia(createPinia())
+    expect(useSessionStore().token).toBeNull()
+    expect(useSessionStore().refreshToken).toBeNull()
+  } finally {
+    vi.unstubAllGlobals()
+  }
+})

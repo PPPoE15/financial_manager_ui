@@ -1,3 +1,5 @@
+import { useSessionStore } from '@/stores/session'
+import type { SessionHttpClient } from '@/api/http'
 import { http } from '@/api/client'
 import type { LoginRequest, RegistrationRequest, TokenResponse } from '@/types/auth'
 import type { User, UserUpdate } from '@/types/user'
@@ -28,4 +30,44 @@ export async function getCurrentUser(): Promise<User> {
 export async function updateCurrentUser(body: UserUpdate): Promise<User> {
   const { data } = await http.patch<User>('/me', body, { api: 'auth' })
   return data
+}
+
+/** Отзыв и локальная очистка выполняются под той же блокировкой, что и ротация. */
+export async function logoutSession(
+  client: SessionHttpClient,
+  session: ReturnType<typeof useSessionStore>,
+): Promise<void> {
+  session.sync()
+  const generation = session.generation
+  session.signingOut = true
+  try {
+    await client.waitForRefresh()
+    await client.runSessionOperation(async () => {
+      session.sync()
+      if (generation !== session.generation) return
+      try {
+        if (session.refreshToken)
+          await client.post(
+            '/logout',
+            {},
+            {
+              api: 'auth',
+              refreshTokenBody: true,
+              sessionLockHeld: Boolean(navigator.locks),
+              sessionGeneration: generation,
+            },
+          )
+      } finally {
+        session.sync()
+        if (generation === session.generation) session.clear()
+      }
+    }, true)
+  } finally {
+    session.sync()
+    if (generation === session.generation) session.clear()
+  }
+}
+
+export function logout(): Promise<void> {
+  return logoutSession(http, useSessionStore())
 }
