@@ -16,7 +16,9 @@ npm run lint       # eslint . --fix  (CI runs `npx eslint .` without --fix)
 npm run format     # prettier --write src/
 ```
 
-CI (`.github/workflows/ci.yml`): `npm ci` → `npx eslint .` → `npm run build` → `npm run test`.
+CI/CD (`.github/workflows/ci.yml`): `npm ci` → `npx eslint .` → `npm run build` → `npm run test`
+→ `publish` (only a successful push to `dev`/`master`). PRs run checks only.
+Publication and immutable deployment references are documented in `docs/ci-cd.md`.
 
 Docker/deploy:
 ```sh
