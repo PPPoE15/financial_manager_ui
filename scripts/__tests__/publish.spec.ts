@@ -16,7 +16,7 @@ describe('publication gate', () => {
   it('keeps all required checks and removes the independent publisher', () => {
     expect(workflow.on).toEqual({ push: { branches: ['dev', 'master'] }, pull_request: {} })
     expect(workflow.jobs.build.steps.map((step: { run?: string }) => step.run).filter(Boolean))
-      .toEqual(['npm ci', 'npx eslint .', 'npm run build', 'npm run test'])
+      .toEqual(['npm ci', 'npx eslint .', 'npm run build', 'python3 -m unittest discover -s scripts/tests -p test_deploy_ssh.py -v', 'npm run test'])
     expect(existsSync('.github/workflows/docker-image.yml')).toBe(false)
   })
   it.each(['success', 'failure', 'cancelled', 'skipped'])('gates %s of this run', result => {
