@@ -25,6 +25,9 @@ jobs:
         run: npx eslint .
       - name: Type-check and build
         run: npm run build
+      - name: Test SSH deployment client
+        run: python3 -m unittest discover -s scripts/tests -p test_deploy_ssh.py -v
+
       - name: Test
         run: npm run test
 
@@ -65,3 +68,27 @@ jobs:
           name: fm-ui-${{ github.ref_name }}-${{ github.sha }}-${{ github.run_attempt }}
           path: ${{ runner.temp }}/publication.json
           if-no-files-found: error
+
+  deploy:
+    needs: publish
+    if: ${{ success() && github.event_name == 'push' && (github.ref_name == 'dev' || github.ref_name == 'master') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    environment: ${{ github.ref_name }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Deploy published digest over verified SSH
+        env:
+          DEPLOY_ENVIRONMENT: ${{ github.ref_name }}
+          DEPLOY_COMPONENT: ui
+          DEPLOY_IMAGE: ${{ needs.publish.outputs.image }}
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_PORT: ${{ secrets.DEPLOY_PORT }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          DEPLOY_ROOT: ${{ secrets.DEPLOY_ROOT }}
+          DEPLOY_KEY: ${{ secrets.DEPLOY_KEY }}
+          DEPLOY_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+        run: python3 scripts/deploy-ssh.py
