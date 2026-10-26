@@ -27,6 +27,7 @@ digest=$(jq -er '.digest' <<< "$manifest")
 image="$IMAGE_REPOSITORY@$digest"
 # Update only the convenience alias; never rewrite an existing SHA version.
 docker buildx imagetools create --prefer-index=false --tag "$IMAGE_REPOSITORY:$ENVIRONMENT" "$image"
+printf 'Обновлён тег %s:%s -> %s\n' "$IMAGE_REPOSITORY" "$ENVIRONMENT" "$digest"
 jq -n --arg image "$image" --arg tag "$version" --arg sha "$GIT_SHA" \
   --arg environment "$ENVIRONMENT" \
   '{image: $image, tag: $tag, sha: $sha, environment: $environment}' > "$PUBLICATION_METADATA"
