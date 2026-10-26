@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, nextTick, ref, useTemplateRef } from 'vue'
 
+import BalanceHistoryCard from '@/components/balanceHistory/BalanceHistoryCard.vue'
 import BudgetStructureCard from '@/components/budget/BudgetStructureCard.vue'
 import RecentTransactionsCard from '@/components/transactions/RecentTransactionsCard.vue'
 import TransactionEntryDialog from '@/components/transactions/TransactionEntryDialog.vue'
@@ -12,9 +13,13 @@ const session = useSessionStore()
 const incomeCard = useTemplateRef('incomeCard')
 const outcomeCard = useTemplateRef('outcomeCard')
 const budgetCard = useTemplateRef('budgetCard')
+const historyCard = useTemplateRef('historyCard')
+const firstStep = useTemplateRef('firstStep')
 const entryType = ref<TransactionType | null>(null)
 
+/** Обновляет отчёты после успешно сохранённых операций. */
 function onTransactionsSaved() {
+  void historyCard.value?.reload()
   reloadRecentTransactions()
   void budgetCard.value?.reload()
 }
@@ -61,13 +66,17 @@ const greeting = computed(() =>
       >
         <BudgetStructureCard ref="budgetCard" @categories-saved="reloadRecentTransactions" />
       </div>
+      <BalanceHistoryCard
+        ref="historyCard"
+        class="xl:col-start-1"
+        @set-balance="firstStep?.openBalance()"
+      />
     </div>
     <!-- Окно поверх главной, пока не заполнены имя или стартовый остаток. Приветствие обновляется
-         само через session.user; NOTE(FM-39): от стартового остатка на главной пока ничего не зависит —
-         карточка «Сумма бюджета» (`GET /balance`) должна перезапрашиваться после закрытия окна. -->
+         само через session.user; график обновляется сразу после сохранения стартового остатка. -->
     <!-- TODO(FM-2): с появлением других защищённых экранов перенести окно в AppLayout, иначе вход по прямой
          ссылке на них пропустит «Первый шаг». -->
-    <FirstStepDialog />
+    <FirstStepDialog ref="firstStep" @balance-saved="historyCard?.reload()" />
     <TransactionEntryDialog
       v-if="entryType"
       :type="entryType"
