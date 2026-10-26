@@ -85,6 +85,7 @@ function focusPoint(index: number): void {
   dismissed.value = false
 }
 
+// TODO(FM-88): обрабатывать Escape также для подсказки по наведению, когда фокус остаётся вне графика.
 /** Перемещает фокус между известными точками, не создавая остановок Tab для каждого дня. */
 function onPointKeydown(event: KeyboardEvent, index: number): void {
   if (event.key === 'Escape') {
