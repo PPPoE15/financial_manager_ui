@@ -63,6 +63,7 @@ const geometry = computed(
     }
   },
 )
+// TODO(FM-88): размещать подписи дат по x точек: justify-between смещает их для одного и чётного числа дней.
 const dateLabels = computed(
   /** Оставляет читаемые подписи дат даже на узком экране. */ () =>
     [...new Set([0, Math.floor((props.points.length - 1) / 2), props.points.length - 1])].flatMap(
