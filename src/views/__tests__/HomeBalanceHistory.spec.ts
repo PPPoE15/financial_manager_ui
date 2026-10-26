@@ -62,12 +62,14 @@ describe('История остатка на главной', () => {
   it('обновляет график после сохранения операции', async () => {
     wrapper = mount(HomeView, { global: { stubs: { TransactionEntryDialog: true } } })
     await flushPromises()
-    expect(wrapper.get('output').text()).toBe('100\u00a0₽')
+    await wrapper.get('[data-point-index]').trigger('focus')
+    expect(wrapper.get('[role="tooltip"]').text()).toContain('100\u00a0₽')
     await wrapper.get('[aria-label="Добавить расход"]').trigger('click')
     balance = -50
     wrapper.getComponent(TransactionEntryDialog).vm.$emit('saved')
     await flushPromises()
-    expect(wrapper.get('output').text()).toBe('−50\u00a0₽')
+    await wrapper.get('[data-point-index]').trigger('focus')
+    expect(wrapper.get('[role="tooltip"]').text()).toContain('−50\u00a0₽')
   })
   /** Открывает существующий сценарий даже после сбоя первичной проверки остатка. */
   it('из FM-409203 открывает Первый шаг и загружает график после POST', async () => {
@@ -100,7 +102,8 @@ describe('История остатка на главной', () => {
       .querySelector('form')!
       .dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }))
     await flushPromises()
-    expect(wrapper.get('output').text()).toBe('75\u00a0₽')
+    await wrapper.get('[data-point-index]').trigger('focus')
+    expect(wrapper.get('[role="tooltip"]').text()).toContain('75\u00a0₽')
     expect(document.querySelector('[role="dialog"]')).toBeNull()
   })
 })
