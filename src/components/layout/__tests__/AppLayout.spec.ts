@@ -126,7 +126,7 @@ describe('AppLayout (защищённая оболочка)', () => {
     expect(link.attributes('aria-current')).toBe('location')
     expect(w.get('nav a').attributes('aria-current')).toBe('false')
     expect(document.activeElement?.id).toBe('categories')
-    expect(w.text()).not.toContain('Импорт CSV')
+    expect(w.text()).toContain('Импорт CSV')
     expect(w.text()).not.toContain('Новая операция')
   })
 
@@ -159,4 +159,26 @@ describe('AppLayout (защищённая оболочка)', () => {
 
     expect(router.currentRoute.value.name).toBe(LOGIN_ROUTE)
   })
+})
+
+/** Открывает окно импорта рабочим пунктом меню и позволяет открыть его повторно. */
+it('открывает импорт из основного меню', async () => {
+  localStorage.clear()
+  setActivePinia(createPinia())
+  vi.mocked(getCurrentUser).mockResolvedValue(user)
+  const w = await mountSignedIn()
+  const button = w
+    .findAll('nav button')
+    .find(/** Находит пункт импорта. */ (item) => item.text() === 'Импорт CSV')
+  expect(button).toBeDefined()
+  await button!.trigger('click')
+  await flushPromises()
+  expect(document.querySelector('[role="dialog"]')?.textContent).toContain('Импорт операций')
+  document.querySelector<HTMLButtonElement>('[role="dialog"] [aria-label="Закрыть"]')!.click()
+  await flushPromises()
+  expect(document.querySelector('[role="dialog"]')).toBeNull()
+  await button!.trigger('click')
+  await flushPromises()
+  expect(document.querySelector('[role="dialog"]')).not.toBeNull()
+  w.unmount()
 })

@@ -5,10 +5,13 @@ import BalanceHistoryCard from '@/components/balanceHistory/BalanceHistoryCard.v
 import BudgetStructureCard from '@/components/budget/BudgetStructureCard.vue'
 import RecentTransactionsCard from '@/components/transactions/RecentTransactionsCard.vue'
 import TransactionEntryDialog from '@/components/transactions/TransactionEntryDialog.vue'
+import ImportDialog from '@/components/imports/ImportDialog.vue'
 import FirstStepDialog from '@/components/firstStep/FirstStepDialog.vue'
 import { useSessionStore } from '@/stores/session'
 import type { TransactionType } from '@/types/budget'
 
+defineProps<{ importRequested?: boolean }>()
+const emit = defineEmits<{ importClosed: [] }>()
 const session = useSessionStore()
 const incomeCard = useTemplateRef('incomeCard')
 const outcomeCard = useTemplateRef('outcomeCard')
@@ -77,6 +80,11 @@ const greeting = computed(() =>
     <!-- TODO(FM-2): с появлением других защищённых экранов перенести окно в AppLayout, иначе вход по прямой
          ссылке на них пропустит «Первый шаг». -->
     <FirstStepDialog ref="firstStep" @balance-saved="historyCard?.reload()" />
+    <ImportDialog
+      v-if="importRequested"
+      @saved="onTransactionsSaved"
+      @close="emit('importClosed')"
+    />
     <TransactionEntryDialog
       v-if="entryType"
       :type="entryType"

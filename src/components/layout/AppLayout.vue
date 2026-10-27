@@ -15,6 +15,7 @@ const profile = ref<HTMLElement>()
 const trigger = ref<HTMLButtonElement>()
 const logout = ref<HTMLButtonElement>()
 const open = ref(false)
+const importRequested = ref(false)
 const focusStyle =
   'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus'
 const menu = [
@@ -69,7 +70,10 @@ onBeforeUnmount(() => {
         alt="Финансовый менеджер"
         class="h-9 w-[126px] object-contain object-left"
       />
-      <nav aria-label="Основное меню" class="mt-7 flex gap-2 lg:mt-12 lg:flex-col lg:gap-2">
+      <nav
+        aria-label="Основное меню"
+        class="mt-7 flex flex-wrap gap-2 lg:mt-12 lg:flex-col lg:gap-2"
+      >
         <RouterLink
           v-for="item in menu"
           :key="item.label"
@@ -85,8 +89,16 @@ onBeforeUnmount(() => {
         >
           {{ item.label }}
         </RouterLink>
+        <button
+          type="button"
+          class="flex min-h-11 items-center rounded px-3 text-sm text-ink-secondary hover:bg-surface-muted lg:px-6"
+          :class="focusStyle"
+          @click="importRequested = true"
+        >
+          Импорт CSV
+        </button>
       </nav>
-      <!-- NOTE(FM-57): новая операция, CSV и настройки скрыты до появления рабочих сценариев. -->
+      <!-- NOTE(FM-57): новая операция и настройки скрыты до появления рабочих сценариев. -->
     </aside>
 
     <div
@@ -142,6 +154,14 @@ onBeforeUnmount(() => {
         </button>
       </div>
     </div>
-    <main class="relative min-w-0 flex-1"><RouterView /></main>
+    <main class="relative min-w-0 flex-1">
+      <RouterView v-slot="{ Component }">
+        <component
+          :is="Component"
+          :import-requested="importRequested"
+          @import-closed="importRequested = false"
+        />
+      </RouterView>
+    </main>
   </div>
 </template>
