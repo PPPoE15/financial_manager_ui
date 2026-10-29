@@ -109,3 +109,10 @@ it('сообщает об отсутствии сохранения при FM-50
   expect(state.message.value).toContain('Ничего не сохранено')
   expect(state.file.value).not.toBeNull()
 })
+
+/** Пустой CSV получает адрес первой строки ещё до отправки запроса. */
+it('указывает строку для пустого CSV', () => {
+  const state = useImport()
+  state.selectFiles([new File([], 'empty.csv')])
+  expect(state.message.value).toBe('Строка файла 1 · Файл: файл пуст. Ничего не сохранено.')
+})

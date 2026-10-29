@@ -7,6 +7,7 @@ export interface ImportResult {
   imported_count: number
 }
 export interface ImportIssue {
+  /** Физическая строка начала записи CSV или строка Excel; null — ошибка всего файла. */
   row: number | null
   field: 'file' | 'date' | 'amount' | 'category' | 'description'
   reason: string

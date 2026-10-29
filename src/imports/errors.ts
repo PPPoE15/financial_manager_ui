@@ -10,7 +10,7 @@ const messages: Record<string, string> = {
   'FM-415301':
     'Формат файла не поддерживается. Используйте CSV или Excel (.xlsx). Ничего не сохранено.',
   'FM-422000': 'Не удалось принять файл. Выберите файл заново. Ничего не сохранено.',
-  'FM-422301': 'Проверьте структуру и кодировку файла. Ничего не сохранено.',
+  'FM-422301': 'Проверьте структуру файла. Ничего не сохранено.',
   'FM-422302': 'В файле нет операций. Ничего не сохранено.',
   'FM-422303': 'Исправьте ошибки в файле. Ничего не сохранено.',
   'FM-500301': 'Не удалось сохранить операции. Ничего не сохранено.',
@@ -28,7 +28,15 @@ export function mapImportError(error: unknown) {
   )?.response
   const data = response?.data
   const code = data?.code ?? ''
-  const known = messages[code]
+  const issues = Array.isArray(data?.errors) ? data.errors : []
+  const known =
+    code === 'FM-422301' &&
+    issues.some(
+      /** Проверяет причину ошибки кодировки, переданную сервером. */ (issue) =>
+        issue.reason === 'invalid_encoding',
+    )
+      ? 'Сохраните файл в кодировке UTF-8. Ничего не сохранено.'
+      : messages[code]
   const hasIssues = ['FM-422301', 'FM-422302', 'FM-422303'].includes(code)
   return {
     message:
@@ -37,7 +45,7 @@ export function mapImportError(error: unknown) {
         ? 'Сессия истекла. Войдите снова.'
         : 'Результат импорта неизвестен. Проверьте список операций перед повторной загрузкой'),
     unknown: !known && response?.status !== 401,
-    issues: hasIssues && Array.isArray(data?.errors) ? data.errors : [],
+    issues: hasIssues ? issues : [],
     truncated: hasIssues && data?.errors_truncated === true,
   }
 }

@@ -181,3 +181,13 @@ state decisions are in `docs/design-theme.md`; the local component preview is `/
 ## UI language
 
 User-facing strings (labels, buttons, messages) are in Russian; keep new text consistent with this.
+
+## Импорт CSV — FM-96
+
+`ImportDialog.vue` использует отдельные подсказки CSV/XLSX: гибкий порядок и дополнительные
+колонки относятся только к CSV. `errors[].row` для CSV — физическая строка начала записи,
+отображать «Строка файла», для XLSX — «Строка Excel», null — «Файл».
+`imports/errors.ts` различает `invalid_encoding` и ошибки структуры внутри FM-422301;
+не подсказывать менять кодировку без соответствующей причины. Сообщения отдельных полей
+берутся из API и выводятся текстом. Не парсить и не преобразовывать CSV на клиенте.
+Подробнее: `docs/import-operations.md`.
