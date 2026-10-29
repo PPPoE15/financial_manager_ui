@@ -66,7 +66,7 @@ it.each([
             row: 4,
             field: 'category',
             reason: 'unknown_category',
-            message: 'Категория не найдена',
+            message: 'Категория «Несуществующая» не найдена',
           },
         ],
         errors_truncated: true,
@@ -77,7 +77,7 @@ it.each([
   await choose(filename)
   await submit()
   expect(element('[role=dialog]').textContent).toContain(address)
-  expect(element('[role=dialog]').textContent).toContain('Категория не найдена')
+  expect(element('[role=dialog]').textContent).toContain('Категория «Несуществующая» не найдена')
   expect(element('[role=dialog]').textContent).toContain('Показаны первые 100 ошибок')
   expect(wrapper.emitted('saved')).toBeUndefined()
 })
@@ -196,6 +196,9 @@ it('показывает актуальные подсказки для выбр
   expect(element('[role=dialog]').textContent).toContain('запятая или точка с запятой')
   expect(element('[role=dialog]').textContent).toContain('дд.мм.гггг или дд.мм.гг')
   expect(element('[role=dialog]').textContent).toContain('Пробелы по краям всех значений удаляются')
+  expect(element('[role=dialog]').textContent).toContain('1,25 — это 125 рублей')
+  expect(element('[role=dialog]').textContent).toContain('пробелы, точки и запятые')
+  expect(element('[role=dialog]').textContent).toContain('1.1.2025')
   await choose('data.xlsx')
   expect(element('[role=dialog]').textContent).toContain(
     'Excel: сохраните названия и порядок четырёх колонок',
