@@ -199,6 +199,7 @@ it('показывает актуальные подсказки для выбр
   expect(element('[role=dialog]').textContent).toContain('1,25 — это 125 рублей')
   expect(element('[role=dialog]').textContent).toContain('пробелы, точки и запятые')
   expect(element('[role=dialog]').textContent).toContain('1.1.2025')
+  expect(element('[role=dialog]').textContent).toContain('заключите сумму с запятой в кавычки')
   await choose('data.xlsx')
   expect(element('[role=dialog]').textContent).toContain(
     'Excel: сохраните названия и порядок четырёх колонок',
