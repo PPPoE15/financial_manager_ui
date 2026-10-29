@@ -51,9 +51,9 @@ it('сохраняет выбранный файл, показывает чис�
   expect(post).toHaveBeenCalledOnce()
 })
 
-/** Различает логические записи CSV и строки Excel в сообщениях сервера. */
+/** Различает физические строки файла CSV и строки листа Excel. */
 it.each([
-  ['a.csv', 'Запись CSV 4'],
+  ['a.csv', 'Строка файла 4'],
   ['a.xlsx', 'Строка Excel 4'],
 ])('адресует ошибку %s', async (filename, address) => {
   vi.spyOn(http, 'post').mockRejectedValue({
@@ -187,4 +187,58 @@ it('закрывается по Escape и восстанавливает фок�
   wrapper.unmount()
   expect(document.activeElement?.id).toBe('opener')
   expect(document.getElementById('app')!.hasAttribute('inert')).toBe(false)
+})
+
+/** Объясняет гибкие правила CSV до выбора файла и сохраняет отдельные правила Excel. */
+it('показывает актуальные подсказки для выбранного формата', async () => {
+  expect(element('[role=dialog]').textContent).toContain('Порядок колонок в CSV не важен')
+  expect(element('[role=dialog]').textContent).toContain('Дополнительные колонки игнорируются')
+  expect(element('[role=dialog]').textContent).toContain('запятая или точка с запятой')
+  expect(element('[role=dialog]').textContent).toContain('дд.мм.гггг или дд.мм.гг')
+  expect(element('[role=dialog]').textContent).toContain('Пробелы по краям всех значений удаляются')
+  await choose('data.xlsx')
+  expect(element('[role=dialog]').textContent).toContain(
+    'Excel: сохраните названия и порядок четырёх колонок',
+  )
+  expect(element('[role=dialog]').textContent).not.toContain('Порядок колонок в CSV не важен')
+  await choose('data.csv')
+  expect(element('[role=dialog]').textContent).toContain('Порядок колонок в CSV не важен')
+})
+
+/** Сохраняет физический номер, поле и причину, в том числе для ошибок заголовка и файла. */
+it.each([
+  [
+    'FM-422301',
+    1,
+    'amount',
+    'invalid_structure',
+    'Повторяется столбец «Сумма»',
+    'Строка файла 1 · Сумма',
+  ],
+  ['FM-422301', 4, 'file', 'invalid_structure', 'Проверьте кавычки CSV', 'Строка файла 4 · Файл'],
+  [
+    'FM-422301',
+    2,
+    'file',
+    'invalid_encoding',
+    'Файл должен быть в кодировке UTF-8',
+    'Строка файла 2 · Файл',
+  ],
+  ['FM-422302', 1, 'file', 'empty_file', 'В файле нет операций', 'Строка файла 1 · Файл'],
+  ['FM-422303', 5, 'amount', 'invalid_amount', 'Укажите сумму', 'Строка файла 5 · Сумма'],
+])('показывает адрес %s / %s / %s', async (code, row, field, reason, message, address) => {
+  vi.spyOn(http, 'post').mockRejectedValue({
+    response: {
+      status: 422,
+      data: {
+        code,
+        errors: [{ row, field, reason, message }],
+        imported_count: 0,
+      },
+    },
+  })
+  await choose()
+  await submit()
+  expect(element('[aria-label="Ошибки файла"]').textContent).toContain(`${address}: ${message}`)
+  expect(wrapper.emitted('saved')).toBeUndefined()
 })

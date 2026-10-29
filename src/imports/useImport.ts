@@ -46,7 +46,8 @@ export function useImport() {
       return
     }
     if (!selected.size) {
-      message.value = 'Файл пуст'
+      message.value =
+        extension === 'csv' ? 'Строка файла 1 · Файл: файл пуст. Ничего не сохранено.' : 'Файл пуст'
       return
     }
     if (selected.size > 5242880) {

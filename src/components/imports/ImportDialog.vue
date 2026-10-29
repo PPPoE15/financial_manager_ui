@@ -33,6 +33,18 @@ const noun = computed(
 const object = computed(
   /** Выбирает подпись кнопки отправки. */ () => (type.value === 'income' ? 'доходы' : 'расходы'),
 )
+const columnHelp = computed(
+  /** Объясняет правила колонок отдельно для CSV и Excel. */ () =>
+    format.value === 'csv'
+      ? 'Порядок колонок в CSV не важен. Дополнительные колонки игнорируются.'
+      : 'Excel: сохраните названия и порядок четырёх колонок в шаблоне.',
+)
+const formatHelp = computed(
+  /** Объясняет подготовку значений для выбранного формата файла. */ () =>
+    format.value === 'csv'
+      ? 'CSV: UTF-8; разделитель — запятая или точка с запятой. Дата — дд.мм.гггг или дд.мм.гг: день, месяц, год; разделители могут быть любыми нецифровыми символами. Годы 00–99 означают 2000–2099. Пробелы по краям всех значений удаляются, включая заголовки. Сумма — целые рубли без разделителей тысяч.'
+      : 'Excel: используйте шаблон выбранного типа операций. Дата — дд.мм.гггг, дд/мм/гггг или дд-мм-гггг. Сумма — целые рубли.',
+)
 const fields = {
   file: 'Файл',
   date: 'Дата',
@@ -224,8 +236,10 @@ onBeforeUnmount(() => {
           >
             <div>
               <h4 class="text-sm font-bold">Шаблон {{ noun }}</h4>
-              <p class="mt-2 text-caption text-ink-muted">Скачайте и заполните шаблон.</p>
-              <p class="mt-1 text-caption text-ink-muted">Сохраните названия и порядок колонок.</p>
+              <p class="mt-2 text-caption text-ink-muted">
+                Обязательные колонки: Дата, Сумма, Категория, Описание.
+              </p>
+              <p class="mt-1 text-caption text-ink-muted">{{ columnHelp }}</p>
             </div>
             <div class="flex flex-wrap gap-2">
               <BaseButton
@@ -287,7 +301,7 @@ onBeforeUnmount(() => {
             <p v-if="file" class="mt-3 break-all text-sm font-bold">{{ file.name }}</p>
           </div>
           <p class="mt-3 text-caption text-ink-muted">
-            Используйте шаблон выбранного типа операций.
+            {{ formatHelp }}
           </p>
           <p class="mt-1 text-caption text-ink-muted">
             До 5 МиБ и 10 000 операций. Повторная загрузка создаёт новые операции.
@@ -308,7 +322,7 @@ onBeforeUnmount(() => {
                 {{
                   issue.row === null
                     ? 'Файл'
-                    : `${format === 'csv' ? 'Запись CSV' : 'Строка Excel'} ${issue.row} · ${fields[issue.field]}`
+                    : `${format === 'csv' ? 'Строка файла' : 'Строка Excel'} ${issue.row} · ${fields[issue.field]}`
                 }}: {{ issue.message }}
               </li>
             </ul>
