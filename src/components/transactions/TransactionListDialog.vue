@@ -169,10 +169,18 @@ async function requestAction(action: () => Promise<void> | void) {
   }
   await action()
 }
+/** Возвращает отображаемые границы к реально применённому серверному фильтру. */
+function restorePeriod() {
+  after.value = filters.value.after?.slice(0, 10) || ''
+  before.value = filters.value.before?.slice(0, 10) || ''
+  period.value = after.value || before.value ? 'range' : 'all'
+  filterError.value = ''
+}
 /** Завершает подтверждение перехода, сохраняя окно при ошибке записи. */
 async function chooseLeave(choice: 'save' | 'discard' | 'stay') {
   if (busy.value) return
   if (choice === 'stay') {
+    restorePeriod()
     leave.value = false
     pendingAction = undefined
     resolveLeave?.(false)
@@ -181,6 +189,7 @@ async function chooseLeave(choice: 'save' | 'discard' | 'stay') {
   }
   leave.value = false
   if (choice === 'save' && !(await editor.save())) {
+    restorePeriod()
     pendingAction = undefined
     resolveLeave?.(false)
     resolveLeave = undefined

@@ -256,3 +256,26 @@ it('после сохранения возвращает фокус на дос�
   expect(document.querySelector('[data-editor-panel]')!.contains(document.activeElement)).toBe(true)
   expect((document.activeElement as HTMLButtonElement).disabled).toBe(false)
 })
+
+it('восстанавливает применённый период после отмены перехода', /** Не допускает скрытого фильтра при подписи «За всё время». */ async () => {
+  await open()
+  const select = document.querySelector<HTMLSelectElement>('select')!
+  select.value = 'range'
+  select.dispatchEvent(new Event('change', { bubbles: true }))
+  await flushPromises()
+  await input('От', '2026-10-01')
+  button('Применить период').click()
+  await flushPromises()
+  button('2 650 ₽').click()
+  await flushPromises()
+  await input('Сумма', '200')
+  vi.mocked(fetchTransactions).mockClear()
+  select.value = 'all'
+  select.dispatchEvent(new Event('change', { bubbles: true }))
+  await flushPromises()
+  button('Остаться').click()
+  await flushPromises()
+  expect(select.value).toBe('range')
+  expect(document.querySelector<HTMLInputElement>('input[aria-label="От"]')?.value).toBe('2026-10-01')
+  expect(fetchTransactions).not.toHaveBeenCalled()
+})
