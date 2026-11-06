@@ -279,3 +279,15 @@ it('восстанавливает применённый период посл�
   expect(document.querySelector<HTMLInputElement>('input[aria-label="От"]')?.value).toBe('2026-10-01')
   expect(fetchTransactions).not.toHaveBeenCalled()
 })
+
+it('сохраняет стандартный Enter кнопки и закрывает окно Escape вне редактора', /** Проверяет клавиатуру на неактивной ячейке. */ async () => {
+  await open()
+  const cell = button('2 650 ₽')
+  cell.focus()
+  const enter = new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true })
+  cell.dispatchEvent(enter)
+  expect(enter.defaultPrevented).toBe(false)
+  cell.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }))
+  await flushPromises()
+  expect(wrapper.emitted('close')).toHaveLength(1)
+})

@@ -63,6 +63,7 @@ async function finish(cancel = false) {
 }
 /** Обрабатывает отмену и подтверждение внутри ячейки. */
 function keydown(event: KeyboardEvent) {
+  if (!active.value) return
   if (event.key === 'Escape') {
     event.stopPropagation()
     event.preventDefault()
