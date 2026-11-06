@@ -16,6 +16,7 @@ const trigger = ref<HTMLButtonElement>()
 const logout = ref<HTMLButtonElement>()
 const open = ref(false)
 const importRequested = ref(false)
+const operationsRequested = ref(false)
 const focusStyle =
   'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus'
 const menu = [
@@ -90,6 +91,13 @@ onBeforeUnmount(() => {
           {{ item.label }}
         </RouterLink>
         <button
+          data-my-operations
+          type="button"
+          class="flex min-h-11 items-center rounded px-3 text-sm text-ink-secondary hover:bg-surface-muted lg:px-6"
+          :class="focusStyle"
+          @click="operationsRequested = true"
+        >Мои операции</button>
+        <button
           type="button"
           class="flex min-h-11 items-center rounded px-3 text-sm text-ink-secondary hover:bg-surface-muted lg:px-6"
           :class="focusStyle"
@@ -159,6 +167,8 @@ onBeforeUnmount(() => {
         <component
           :is="Component"
           :import-requested="importRequested"
+          :operations-requested="operationsRequested"
+          @operations-opened="operationsRequested = false"
           @import-closed="importRequested = false"
         />
       </RouterView>

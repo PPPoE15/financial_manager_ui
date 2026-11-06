@@ -50,7 +50,12 @@ async function begin(field: EditorField) {
   before.value = props.draft.values[field]
   active.value = field
   await nextTick()
-  row.value?.querySelector<HTMLElement>('[data-cell-input]')?.focus()
+  row.value?.querySelector<HTMLElement>(`[data-cell-input="${field}"]`)?.focus()
+}
+/** Запоминает исходную категорию, оставляя открытие списка нативному контролу. */
+function beginCategory() {
+  before.value = props.draft.values.category_uid
+  active.value = 'category_uid'
 }
 /** Завершает редактирование с возвратом фокуса на ячейку. */
 async function finish(cancel = false) {
@@ -68,7 +73,7 @@ function keydown(event: KeyboardEvent) {
     event.stopPropagation()
     event.preventDefault()
     void finish(true)
-  } else if (event.key === 'Enter' && !(event.target instanceof HTMLTextAreaElement)) {
+  } else if (event.key === 'Enter' && !(event.target instanceof HTMLTextAreaElement) && !(event.target instanceof HTMLSelectElement)) {
     event.preventDefault()
     void finish()
   }
@@ -101,14 +106,16 @@ const inputClass =
     </div>
     <div v-for="field in fields" :key="field.key" role="cell" class="min-w-0">
       <span class="text-caption text-ink-muted sm:hidden">{{ field.label }}</span>
-      <template v-if="active === field.key">
+      <template v-if="active === field.key || field.key === 'category_uid'">
         <select
           v-if="field.key === 'category_uid'"
-          data-cell-input
+          :data-field="field.key"
+          @focus="beginCategory"
+          :data-cell-input="field.key"
           :aria-label="field.label"
           :value="draft.values[field.key]"
           :disabled="busy"
-          :class="inputClass"
+          :class="active === field.key ? inputClass : 'min-h-9 w-full min-w-0 cursor-pointer appearance-none rounded border border-transparent bg-transparent px-2 py-1 text-base text-ink hover:bg-field-hover focus-visible:outline sm:text-caption'"
           :aria-invalid="!!draft.errors[field.key]"
           :aria-describedby="
             draft.errors[field.key] ? `${draft.original.uid}-${field.key}-error` : undefined
@@ -128,7 +135,7 @@ const inputClass =
         </select>
         <textarea
           v-else-if="field.key === 'description'"
-          data-cell-input
+          :data-cell-input="field.key"
           :aria-label="field.label"
           :value="draft.values[field.key]"
           :disabled="busy"
@@ -143,7 +150,7 @@ const inputClass =
         />
         <input
           v-else
-          data-cell-input
+          :data-cell-input="field.key"
           :aria-label="field.label"
           :type="field.key === 'date' ? 'date' : 'text'"
           :inputmode="field.key === 'amount' ? 'numeric' : undefined"

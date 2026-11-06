@@ -121,7 +121,8 @@ it('открывает полный список и выбранную стро�
   api.mockResolvedValue([record()])
   const wrapper = mount(RecentTransactionsCard, { props: { type: 'income' } })
   await flushPromises()
-  await wrapper.get('[data-all-operations]').trigger('click')
+  expect(wrapper.text()).not.toContain('Все операции')
+  await wrapper.get('h2 button').trigger('click')
   await wrapper.get('[data-open-operation]').trigger('click')
   expect(wrapper.emitted('open')).toEqual([
     ['income', undefined],

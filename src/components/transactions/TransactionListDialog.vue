@@ -264,6 +264,7 @@ async function applyBulk(value: string) {
     for (const uid of removedUids.value) selectedUids.value.delete(uid)
   } else if (mode === 'date') editor.applyDate(selected.value, value)
   else if (mode === 'category') editor.applyCategory(selected.value, value)
+  if (mode === 'date' || mode === 'category') selectedUids.value.clear()
   bulk.value = null
 }
 /** Открывает актуальные данные конкретной конфликтующей операции. */
@@ -289,7 +290,8 @@ async function focusError() {
 }
 /** Сохраняет все черновики и показывает первое препятствие при неуспехе. */
 async function save() {
-  if (!(await editor.save())) await focusError()
+  if (await editor.save()) selectedUids.value.clear()
+  else await focusError()
 }
 /** Защищает перезагрузку и закрытие вкладки штатным диалогом браузера. */
 function beforeUnload(event: BeforeUnloadEvent) {

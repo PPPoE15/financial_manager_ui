@@ -65,7 +65,9 @@ defineExpose({ reload })
   <section :aria-labelledby="titleId" class="min-w-0 rounded bg-budget-panel/40 p-4 shadow-panel">
     <header class="flex items-start justify-between gap-2">
       <div class="min-w-0">
-        <h2 :id="titleId" class="text-base font-bold">{{ income ? 'Доходы' : 'Расходы' }}</h2>
+        <h2 :id="titleId" class="text-base font-bold">
+          <button type="button" class="rounded text-left hover:text-ink-secondary focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus" @click="open($event)">{{ income ? 'Доходы' : 'Расходы' }}</button>
+        </h2>
         <p class="mt-1 text-caption text-ink-muted">Недавно добавленные записи</p>
       </div>
       <button
@@ -123,13 +125,5 @@ defineExpose({ reload })
         </ul>
       </template>
     </div>
-    <button
-      data-all-operations
-      type="button"
-      class="mt-3 min-h-9 rounded text-caption text-ink-secondary underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus"
-      @click="open($event)"
-    >
-      Все операции
-    </button>
   </section>
 </template>

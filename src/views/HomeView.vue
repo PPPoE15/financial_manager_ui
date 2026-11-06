@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, ref, useTemplateRef } from 'vue'
+import { computed, nextTick, ref, useTemplateRef, watch } from 'vue'
 
 import BalanceHistoryCard from '@/components/balanceHistory/BalanceHistoryCard.vue'
 import BudgetStructureCard from '@/components/budget/BudgetStructureCard.vue'
@@ -11,8 +11,8 @@ import FirstStepDialog from '@/components/firstStep/FirstStepDialog.vue'
 import { useSessionStore } from '@/stores/session'
 import type { TransactionType } from '@/types/budget'
 
-defineProps<{ importRequested?: boolean }>()
-const emit = defineEmits<{ importClosed: [] }>()
+const props = defineProps<{ importRequested?: boolean; operationsRequested?: boolean }>()
+const emit = defineEmits<{ importClosed: []; operationsOpened: [] }>()
 const session = useSessionStore()
 const incomeCard = useTemplateRef('incomeCard')
 const outcomeCard = useTemplateRef('outcomeCard')
@@ -25,6 +25,17 @@ const operations = ref<{ type: TransactionType; uid?: string } | null>(null)
 function openOperations(type: TransactionType, uid?: string) {
   operations.value = { type, uid }
 }
+
+watch(
+  /** Читает запрос открытия списка из бокового меню. */ () => props.operationsRequested,
+  /** Открывает расходы и подтверждает обработку запроса для повторного открытия. */ (requested) => {
+    if (requested) {
+      openOperations('outcome')
+      emit('operationsOpened')
+    }
+  },
+  { immediate: true },
+)
 
 /** Обновляет отчёты после успешно сохранённых операций. */
 function onTransactionsSaved() {

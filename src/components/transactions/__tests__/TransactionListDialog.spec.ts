@@ -178,6 +178,7 @@ it('массовая дата меняет черновики до сохран�
   button('Применить к 2').click()
   await flushPromises()
   expect(saveTransactions).not.toHaveBeenCalled()
+  expect(document.querySelector<HTMLInputElement>('input[aria-label="Выбрать операцию"]')?.checked).toBe(false)
   vi.mocked(saveTransactions).mockResolvedValue([
     transaction('one', { transaction_date: '2026-10-01T14:30:12.123456', version: 4 }),
     transaction('two', { transaction_date: '2026-10-01T14:30:12.123456', version: 4 }),
@@ -313,4 +314,22 @@ it('игнорирует поздние категории прежнего ти
   await flushPromises()
   expect(categoryFilter.textContent).toContain('Зарплата')
   expect(categoryFilter.textContent).not.toContain('Категория расходов')
+})
+
+it('сбрасывает выбор после успешного сохранения', /** Сохраняет выделенные правки и снимает чекбоксы. */ async () => {
+  await open()
+  document.querySelector<HTMLInputElement>('input[aria-label="Выбрать операцию"]')!.click()
+  button('2 650 ₽').click()
+  await flushPromises()
+  await input('Сумма', '200')
+  vi.mocked(saveTransactions).mockResolvedValue([transaction('one', { money_sum: 200, version: 4 })])
+  button('Сохранить').click()
+  await flushPromises()
+  expect(document.querySelector<HTMLInputElement>('input[aria-label="Выбрать операцию"]')!.checked).toBe(false)
+})
+it('предоставляет категорию как выпадающий список без промежуточной кнопки', /** Проверяет нативное открытие категории первым нажатием. */ async () => {
+  await open()
+  const select = document.querySelector<HTMLSelectElement>('[data-uid="one"] select[aria-label="Категория"]')
+  expect(select).not.toBeNull()
+  expect(select!.disabled).toBe(false)
 })
