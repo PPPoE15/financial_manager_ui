@@ -4,7 +4,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import TransactionListDialog from '../TransactionListDialog.vue'
 import { fetchTransactions, saveTransactions, deleteTransactions } from '@/api/transactions'
 import { listCategories } from '@/api/categories'
-import { transaction } from '@/transactions/__tests__/fixtures'
+import { deferred, transaction } from '@/transactions/__tests__/fixtures'
+import type { Category } from '@/types/category'
+import type { TransactionList } from '@/types/transaction'
 vi.mock(
   '@/api/transactions',
   /** Подменяет API, оставляя реальные компоненты. */ () => ({
@@ -290,4 +292,25 @@ it('сохраняет стандартный Enter кнопки и закрыв
   cell.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }))
   await flushPromises()
   expect(wrapper.emitted('close')).toHaveLength(1)
+})
+
+it('игнорирует поздние категории прежнего типа сразу после переключения', /** Проверяет смену типа при незавершённой загрузке обеих границ API. */ async () => {
+  const oldCategories = deferred<Category[]>()
+  const newCategories = deferred<Category[]>()
+  const newPage = deferred<TransactionList>()
+  vi.mocked(listCategories).mockReturnValueOnce(oldCategories.promise).mockReturnValueOnce(newCategories.promise)
+  await open()
+  vi.mocked(fetchTransactions).mockReturnValueOnce(newPage.promise)
+  button('Доходы').click()
+  await flushPromises()
+  oldCategories.resolve([{ uid: 'wrong', name: 'Категория расходов', category_type: 'outcome', money_plan: null, description: null }])
+  await flushPromises()
+  const categoryFilter = document.querySelectorAll('select')[1]!
+  expect(categoryFilter.textContent).not.toContain('Категория расходов')
+  newPage.resolve({ content: [], total: 0, next_skip: null })
+  await flushPromises()
+  newCategories.resolve([{ uid: 'salary', name: 'Зарплата', category_type: 'income', money_plan: null, description: null }])
+  await flushPromises()
+  expect(categoryFilter.textContent).toContain('Зарплата')
+  expect(categoryFilter.textContent).not.toContain('Категория расходов')
 })

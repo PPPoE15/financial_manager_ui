@@ -218,6 +218,8 @@ function changeFilters(next: TransactionFilters) {
       currentByUid.value.clear()
       const typeChanged = next.transaction_type !== filters.value.transaction_type
       if (typeChanged) {
+        categoryGeneration++
+        categoryError.value = ''
         categories.value = []
         next = { ...next, category_uid: undefined }
       }
