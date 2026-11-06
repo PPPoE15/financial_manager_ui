@@ -134,7 +134,7 @@ function focusables() {
 }
 /** Не допускает переход фокуса на затенённый фон. */
 function keepFocus() {
-  if (active && !focusRoot()?.contains(document.activeElement))
+  if (active && (!focusRoot()?.contains(document.activeElement) || document.activeElement?.matches(':disabled') || document.activeElement === focusRoot()))
     (focusables()[0] ?? focusRoot())?.focus()
 }
 /** Восстанавливает фокус после смены вложенного окна. */
@@ -334,6 +334,7 @@ watch(
   [loading, busy],
   /** Возобновляет подгрузку после завершения запроса. */ async () => {
     await nextTick()
+    keepFocus()
     reconnect()
   },
 )
@@ -366,7 +367,9 @@ onMounted(
     if (props.initialUid) {
       if (!draftsByUid.value.has(props.initialUid)) {
         try {
-          editor.ingest([await getTransaction(props.initialUid)])
+          const initial = await getTransaction(props.initialUid)
+        if (initial) editor.ingest([initial])
+        else message.value = 'Операция не найдена при сверке списка. Обновите список.'
         } catch {
           message.value = 'Операция недоступна или удалена.'
         }
@@ -624,7 +627,7 @@ defineExpose({ requestClose })
               :selected="selectedUids.has(row.original.uid)"
               :busy="busy"
               :unresolved="unresolved.has(row.original.uid)"
-              @edit="(field, value) => editor.edit(row.original.uid, field, value)"
+              @edit="/** Передаёт изменение поля в черновик операции. */ (field, value) => editor.edit(row.original.uid, field, value)"
               @select="toggle(row.original.uid)"
               @revert="editor.discard(row.original.uid)"
               @reconcile="reconcile(row.original.uid)"
@@ -673,7 +676,7 @@ defineExpose({ requestClose })
               :selected="selectedUids.has(row.original.uid)"
               :busy="busy"
               :unresolved="unresolved.has(row.original.uid)"
-              @edit="(field, value) => editor.edit(row.original.uid, field, value)"
+              @edit="/** Передаёт изменение поля в черновик операции. */ (field, value) => editor.edit(row.original.uid, field, value)"
               @select="toggle(row.original.uid)"
               @revert="editor.discard(row.original.uid)"
               @reconcile="reconcile(row.original.uid)"
@@ -690,7 +693,7 @@ defineExpose({ requestClose })
               data-save
               type="button"
               :disabled="busy || !dirty.length || dirty.length > 100"
-              class="ml-auto min-h-control rounded bg-action px-6 font-semibold text-action-foreground focus-visible:outline disabled:bg-action-disabled disabled:text-action-disabled-foreground sm:ml-4"
+              class="ml-auto min-h-control rounded bg-action px-6 font-semibold text-action-foreground focus-visible:outline disabled:bg-action-disabled disabled:text-action-disabled-foreground"
               @click="save"
             >
               {{ busy ? 'Обработка…' : 'Сохранить' }}

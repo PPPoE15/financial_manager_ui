@@ -23,9 +23,18 @@ export async function fetchTransactions(
 ): Promise<TransactionList> {
   return (await http.get<TransactionList>('/transactions', { params, signal })).data
 }
-/** Читает актуальную запись для открытия и явной сверки конфликта. */
-export async function getTransaction(uid: string): Promise<Transaction> {
-  return (await http.get<Transaction>(`/transactions/${encodeURIComponent(uid)}`)).data
+/** Ищет UID в актуальных страницах без фильтров; null не доказывает удаления при конкурентных изменениях. */
+export async function getTransaction(uid: string): Promise<Transaction | null> {
+  let skip = 0
+  while (skip <= 100000) {
+    const { data } = await http.get<TransactionList>('/transactions', { params: { limit: 500, skip, sort: '-transaction_date' } })
+    const record = data.content.find(/** Находит нужную операцию независимо от её даты и категории. */ row => row.uid === uid)
+    if (record) return record
+    if (data.next_skip === null) return null
+    if (!Number.isInteger(data.next_skip) || data.next_skip <= skip) throw new Error('Некорректное смещение сверки')
+    skip = data.next_skip
+  }
+  return null
 }
 /** Сохраняет весь набор правок атомарно, без автоматического повтора. */
 export async function saveTransactions(

@@ -9,7 +9,8 @@ const api = vi.mocked(listTransactions)
 function record(uid = 'new', date = '2026-10-15T00:01:00.123456'): Transaction {
   return {
     uid,
-    version: 1, transaction_date: date,
+    version: 1,
+    transaction_date: date,
     category: { uid: 'category', name: 'Зарплата' },
     money_sum: 12345,
     transaction_type: 'income',
@@ -114,4 +115,19 @@ describe('Недавние транзакции', () => {
     await wrapper.get('button[aria-label="Добавить расход"]').trigger('click')
     expect(wrapper.emitted('add')).toEqual([['outcome']])
   })
+})
+
+it('открывает полный список и выбранную строку, сохраняя действие добавления', /** Проверяет вход в общий список из карточки. */ async () => {
+  api.mockResolvedValue([record()])
+  const wrapper = mount(RecentTransactionsCard, { props: { type: 'income' } })
+  await flushPromises()
+  await wrapper.get('[data-all-operations]').trigger('click')
+  await wrapper.get('[data-open-operation]').trigger('click')
+  expect(wrapper.emitted('open')).toEqual([
+    ['income', undefined],
+    ['income', 'new'],
+  ])
+  await wrapper.get('[aria-label="Добавить доход"]').trigger('click')
+  expect(wrapper.emitted('add')).toEqual([['income']])
+  wrapper.unmount()
 })

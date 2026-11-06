@@ -8,11 +8,19 @@ import type { Transaction } from '@/types/transaction'
 import { formatMoney } from '@/utils/money'
 
 const props = defineProps<{ type: TransactionType }>()
-const emit = defineEmits<{ add: [type: TransactionType] }>()
+const emit = defineEmits<{
+  add: [type: TransactionType]
+  open: [type: TransactionType, uid?: string]
+}>()
 function add(event: MouseEvent) {
   // Safari не фокусирует кнопку при клике: окно должно вернуть фокус именно сюда.
   if (event.currentTarget instanceof HTMLElement) event.currentTarget.focus()
   emit('add', props.type)
+}
+/** Открывает общий список и запоминает инициатор для возврата фокуса. */
+function open(event: MouseEvent, uid?: string) {
+  if (event.currentTarget instanceof HTMLElement) event.currentTarget.focus()
+  emit('open', props.type, uid)
 }
 const titleId = useId()
 const income = computed(() => props.type === 'income')
@@ -85,28 +93,43 @@ defineExpose({ reload })
         </p>
         <ul v-else class="divide-y divide-ink/20 text-caption tracking-normal">
           <li v-for="record in records" :key="record.uid" class="min-w-0 py-3 first:pt-0">
-            <time :datetime="record.transaction_date" class="tabular-nums text-ink-muted">{{
-              formatDate(record.transaction_date)
-            }}</time>
-            <div class="mt-1 flex items-baseline justify-between gap-2">
-              <span class="min-w-0 truncate" :title="record.category.name">{{
-                record.category.name
-              }}</span>
-              <span class="shrink-0 whitespace-nowrap font-semibold tabular-nums">{{
-                formatMoney(record.money_sum)
-              }}</span>
-            </div>
-            <p
-              v-if="record.description"
-              data-testid="description"
-              class="mt-1 truncate text-ink-muted"
-              :title="record.description"
+            <button
+              data-open-operation
+              type="button"
+              class="w-full min-w-0 rounded text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus"
+              @click="open($event, record.uid)"
             >
-              {{ record.description }}
-            </p>
+              <time :datetime="record.transaction_date" class="tabular-nums text-ink-muted">{{
+                formatDate(record.transaction_date)
+              }}</time>
+              <div class="mt-1 flex items-baseline justify-between gap-2">
+                <span class="min-w-0 truncate" :title="record.category.name">{{
+                  record.category.name
+                }}</span>
+                <span class="shrink-0 whitespace-nowrap font-semibold tabular-nums">{{
+                  formatMoney(record.money_sum)
+                }}</span>
+              </div>
+              <p
+                v-if="record.description"
+                data-testid="description"
+                class="mt-1 truncate text-ink-muted"
+                :title="record.description"
+              >
+                {{ record.description }}
+              </p>
+            </button>
           </li>
         </ul>
       </template>
     </div>
+    <button
+      data-all-operations
+      type="button"
+      class="mt-3 min-h-9 rounded text-caption text-ink-secondary underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus"
+      @click="open($event)"
+    >
+      Все операции
+    </button>
   </section>
 </template>

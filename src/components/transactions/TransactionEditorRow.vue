@@ -88,7 +88,7 @@ const inputClass =
     class="grid min-w-0 grid-cols-[28px_minmax(0,1fr)] gap-x-2 border-b border-ink/10 px-2 py-2 sm:grid-cols-[24px_100px_minmax(100px,1fr)_minmax(120px,2fr)_110px_32px] sm:items-start"
     @keydown="keydown"
   >
-    <div role="cell" class="row-span-5 flex min-h-9 items-center sm:row-span-1">
+    <div role="cell" class="row-span-5 flex min-h-9 items-center self-start sm:row-span-1">
       <input
         type="checkbox"
         aria-label="Выбрать операцию"
@@ -116,7 +116,7 @@ const inputClass =
           @blur="active = null"
         >
           <option
-            v-if="!categories.some((c) => c.uid === draft.values.category_uid)"
+            v-if="!categories.some(/** Проверяет наличие выбранной категории. */ (c) => c.uid === draft.values.category_uid)"
             :value="draft.values.category_uid"
           >
             {{ draft.original.category.name }}

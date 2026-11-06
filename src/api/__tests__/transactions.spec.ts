@@ -66,8 +66,6 @@ describe('API редактора', /** Проверяет маршруты и к
     const get = vi.spyOn(http, 'get').mockResolvedValue({ data: page })
     expect(await api.fetchTransactions(params)).toEqual(page)
     expect(get).toHaveBeenCalledWith('/transactions', { params, signal: undefined })
-    await api.getTransaction('one')
-    expect(get).toHaveBeenLastCalledWith('/transactions/one')
   })
   it('сохраняет одним PATCH и возвращает каждый результат удаления', /** Проверяет версии, payload и распаковку ответов. */ async () => {
     const api = await import('@/api/transactions')
@@ -84,4 +82,17 @@ describe('API редактора', /** Проверяет маршруты и к
       items: [{ uid: 'one', expected_version: 3 }],
     })
   })
+})
+
+it('сверяет UID через страницы без фильтров, не используя отсутствующий GET по UID', /** Проверяет доступный контракт чтения при перемещении записи за фильтр. */ async () => {
+  const api = await import('@/api/transactions')
+  const get = vi.spyOn(http, 'get').mockResolvedValueOnce({ data: { total: 501, content: [{ uid: 'other' }], next_skip: 500 } }).mockResolvedValueOnce({ data: { total: 501, content: [{ uid: 'one', version: 4 }], next_skip: null } })
+  expect(await api.getTransaction('one')).toEqual({ uid: 'one', version: 4 })
+  expect(get).toHaveBeenNthCalledWith(1, '/transactions', { params: { limit: 500, skip: 0, sort: '-transaction_date' } })
+  expect(get).toHaveBeenNthCalledWith(2, '/transactions', { params: { limit: 500, skip: 500, sort: '-transaction_date' } })
+})
+it('не объявляет запись удалённой после отсутствия в списке', /** Возвращает отсутствие результата сверки, а не выдуманный HTTP 404. */ async () => {
+  const api = await import('@/api/transactions')
+  vi.spyOn(http, 'get').mockResolvedValue({ data: { total: 0, content: [], next_skip: null } })
+  expect(await api.getTransaction('missing')).toBeNull()
 })
