@@ -37,7 +37,7 @@ beforeEach(() => {
   ])
   vi.mocked(createTransaction).mockResolvedValue({
     uid: 't',
-    transaction_date: '2026-10-15T09:08:07',
+    version: 1, transaction_date: '2026-10-15T09:08:07',
     category: { uid: 'food', name: 'Продукты' },
     money_sum: 4990,
     transaction_type: 'outcome',

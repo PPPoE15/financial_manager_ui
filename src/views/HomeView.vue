@@ -1,17 +1,18 @@
 <script setup lang="ts">
-import { computed, nextTick, ref, useTemplateRef } from 'vue'
+import { computed, nextTick, ref, useTemplateRef, watch } from 'vue'
 
 import BalanceHistoryCard from '@/components/balanceHistory/BalanceHistoryCard.vue'
 import BudgetStructureCard from '@/components/budget/BudgetStructureCard.vue'
 import RecentTransactionsCard from '@/components/transactions/RecentTransactionsCard.vue'
+import TransactionListDialog from '@/components/transactions/TransactionListDialog.vue'
 import TransactionEntryDialog from '@/components/transactions/TransactionEntryDialog.vue'
 import ImportDialog from '@/components/imports/ImportDialog.vue'
 import FirstStepDialog from '@/components/firstStep/FirstStepDialog.vue'
 import { useSessionStore } from '@/stores/session'
 import type { TransactionType } from '@/types/budget'
 
-defineProps<{ importRequested?: boolean }>()
-const emit = defineEmits<{ importClosed: [] }>()
+const props = defineProps<{ importRequested?: boolean; operationsRequested?: boolean }>()
+const emit = defineEmits<{ importClosed: []; operationsOpened: [] }>()
 const session = useSessionStore()
 const incomeCard = useTemplateRef('incomeCard')
 const outcomeCard = useTemplateRef('outcomeCard')
@@ -19,6 +20,22 @@ const budgetCard = useTemplateRef('budgetCard')
 const historyCard = useTemplateRef('historyCard')
 const firstStep = useTemplateRef('firstStep')
 const entryType = ref<TransactionType | null>(null)
+const operations = ref<{ type: TransactionType; uid?: string } | null>(null)
+/** Открывает единый список выбранного типа с необязательным фокусом на операции. */
+function openOperations(type: TransactionType, uid?: string) {
+  operations.value = { type, uid }
+}
+
+watch(
+  /** Читает запрос открытия списка из бокового меню. */ () => props.operationsRequested,
+  /** Открывает расходы и подтверждает обработку запроса для повторного открытия. */ (requested) => {
+    if (requested) {
+      openOperations('outcome')
+      emit('operationsOpened')
+    }
+  },
+  { immediate: true },
+)
 
 /** Обновляет отчёты после успешно сохранённых операций. */
 function onTransactionsSaved() {
@@ -58,8 +75,18 @@ const greeting = computed(() =>
              На узком экране пустое место скрыто; сами показатели появятся отдельно. -->
         <div aria-hidden="true" class="mb-4 hidden h-[112.5px] xl:block" />
         <div class="grid min-w-0 gap-4 sm:grid-cols-2 xl:grid-cols-1 2xl:grid-cols-2">
-          <RecentTransactionsCard ref="incomeCard" type="income" @add="entryType = $event" />
-          <RecentTransactionsCard ref="outcomeCard" type="outcome" @add="entryType = $event" />
+          <RecentTransactionsCard
+            ref="incomeCard"
+            type="income"
+            @add="entryType = $event"
+            @open="openOperations"
+          />
+          <RecentTransactionsCard
+            ref="outcomeCard"
+            type="outcome"
+            @add="entryType = $event"
+            @open="openOperations"
+          />
         </div>
       </div>
       <div
@@ -84,6 +111,13 @@ const greeting = computed(() =>
       v-if="importRequested"
       @saved="onTransactionsSaved"
       @close="emit('importClosed')"
+    />
+    <TransactionListDialog
+      v-if="operations"
+      :type="operations.type"
+      :initial-uid="operations.uid"
+      @changed="onTransactionsSaved"
+      @close="operations = null"
     />
     <TransactionEntryDialog
       v-if="entryType"

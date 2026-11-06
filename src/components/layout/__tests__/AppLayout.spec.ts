@@ -50,6 +50,21 @@ describe('AppLayout (защищённая оболочка)', () => {
     wrapper = undefined
   })
 
+  it('открывает расходы пунктом «Мои операции»', /** Проверяет переход из бокового меню в общий список. */ async () => {
+    const w = await mountSignedIn()
+    await w.get('[data-my-operations]').trigger('click')
+    await flushPromises()
+    const dialog = w.findComponent({ name: 'TransactionListDialog' })
+    expect(dialog.exists()).toBe(true)
+    expect(dialog.props('type')).toBe('outcome')
+    dialog.vm.$emit('close')
+    await flushPromises()
+    expect(w.findComponent({ name: 'TransactionListDialog' }).exists()).toBe(false)
+    await w.get('[data-my-operations]').trigger('click')
+    await flushPromises()
+    expect(w.findComponent({ name: 'TransactionListDialog' }).props('type')).toBe('outcome')
+  })
+
   it('показывает имя текущего пользователя из /auth/me', async () => {
     const w = await mountSignedIn()
 
