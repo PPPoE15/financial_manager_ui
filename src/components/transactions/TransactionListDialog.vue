@@ -437,7 +437,7 @@ defineExpose({ requestClose })
         aria-modal="true"
         aria-labelledby="operations-title"
         tabindex="-1"
-        class="relative my-auto flex max-h-[calc(100dvh-1rem)] min-h-[min(500px,90dvh)] w-full max-w-[1120px] flex-col rounded-md bg-gradient-to-r from-dialog-start/95 to-dialog-end/95 p-3 shadow-xl sm:max-h-[calc(100dvh-3rem)] sm:p-7"
+        class="relative my-auto flex h-[calc(100dvh-1rem)] max-h-[calc(100dvh-1rem)] w-full max-w-[1120px] flex-col rounded-md bg-gradient-to-r from-dialog-start/95 to-dialog-end/95 p-3 shadow-xl sm:h-[calc(100dvh-3rem)] sm:max-h-[calc(100dvh-3rem)] sm:p-7"
       >
         <header class="shrink-0">
           <div class="flex items-center justify-between">
