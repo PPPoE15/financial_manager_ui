@@ -9,7 +9,7 @@ const api = vi.mocked(listTransactions)
 function record(uid = 'new', date = '2026-10-15T00:01:00.123456'): Transaction {
   return {
     uid,
-    transaction_date: date,
+    version: 1, transaction_date: date,
     category: { uid: 'category', name: 'Зарплата' },
     money_sum: 12345,
     transaction_type: 'income',

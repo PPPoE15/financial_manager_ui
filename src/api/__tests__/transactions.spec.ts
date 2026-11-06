@@ -49,3 +49,39 @@ describe('API недавних транзакций', () => {
     await expect(listTransactions('income')).rejects.toBe(error)
   })
 })
+
+describe('API редактора', /** Проверяет маршруты и контракт пакетных операций. */ () => {
+  it('загружает страницу с точными фильтрами и отдельную запись', /** Проверяет query и сохранение метаданных страницы. */ async () => {
+    const api = await import('@/api/transactions')
+    const params = {
+      transaction_type: 'outcome' as const,
+      category_uid: 'c',
+      after: '2026-01-01T00:00:00',
+      before: '2026-01-31T23:59:59.999999',
+      sort: '-transaction_date' as const,
+      skip: 20,
+      limit: 20,
+    }
+    const page = { total: 50, next_skip: 40, content: [] }
+    const get = vi.spyOn(http, 'get').mockResolvedValue({ data: page })
+    expect(await api.fetchTransactions(params)).toEqual(page)
+    expect(get).toHaveBeenCalledWith('/transactions', { params, signal: undefined })
+    await api.getTransaction('one')
+    expect(get).toHaveBeenLastCalledWith('/transactions/one')
+  })
+  it('сохраняет одним PATCH и возвращает каждый результат удаления', /** Проверяет версии, payload и распаковку ответов. */ async () => {
+    const api = await import('@/api/transactions')
+    const items = [{ uid: 'one', expected_version: 3, changes: { description: null } }]
+    const patch = vi
+      .spyOn(http, 'patch')
+      .mockResolvedValue({ data: { content: [{ uid: 'one', version: 4 }] } })
+    expect(await api.saveTransactions(items)).toEqual([{ uid: 'one', version: 4 }])
+    expect(patch).toHaveBeenCalledWith('/transactions/batch', { items })
+    const results = [{ index: 0, uid: 'one', status: 409, code: 'FM-409204', message: 'Конфликт' }]
+    const post = vi.spyOn(http, 'post').mockResolvedValue({ data: { results } })
+    expect(await api.deleteTransactions([{ uid: 'one', expected_version: 3 }])).toEqual(results)
+    expect(post).toHaveBeenCalledWith('/transactions/batch-delete', {
+      items: [{ uid: 'one', expected_version: 3 }],
+    })
+  })
+})

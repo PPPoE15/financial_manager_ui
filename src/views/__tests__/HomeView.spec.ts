@@ -93,7 +93,7 @@ describe('HomeView', () => {
     vi.mocked(listTransactions).mockImplementation(async (type) => [
       {
         uid: type,
-        transaction_date: '2026-10-15T12:00:00',
+        version: 1, transaction_date: '2026-10-15T12:00:00',
         category: { uid: 'category', name },
         money_sum: 100,
         transaction_type: type,
