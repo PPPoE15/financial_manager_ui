@@ -25,6 +25,7 @@ export default {
         field: { DEFAULT: '#1E2532', hover: '#263246', border: '#8997B7' },
         focus: '#E5EAFF',
         sidebar: { text: '#1E2532', accent: '#8997B7' },
+        destructive: '#A43E45',
         success: '#A0FFAC', warning: '#FFE0A3', danger: '#FFD0D7',
       },
       fontFamily: {
