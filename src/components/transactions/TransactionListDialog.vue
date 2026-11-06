@@ -648,7 +648,7 @@ defineExpose({ requestClose })
               type="button"
               :disabled="busy || loading"
               class="rounded underline"
-              @click="nextSkip === null ? list.reload() : list.loadMore()"
+              @click="list.retry"
             >
               Повторить загрузку
             </button>

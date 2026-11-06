@@ -69,3 +69,18 @@ describe('Подгрузка операций', /** Проверяет стра�
     expect(list.loading.value).toBe(false)
   })
 })
+
+it('повторяет сбой перечитывания с первой страницы, сохраняя строки до успеха', /** Проверяет смещение и замену при повторе reload. */ async () => {
+  const api = vi.mocked(fetchTransactions)
+  api.mockResolvedValueOnce({ content: [transaction('old')], total: 2, next_skip: 1 })
+  const list = useTransactionList()
+  await list.loadInitial(40, 40)
+  api.mockRejectedValueOnce(new Error('network'))
+  await list.reload()
+  expect(list.records.value[0]?.uid).toBe('old')
+  api.mockResolvedValueOnce({ content: [transaction('fresh')], total: 1, next_skip: null })
+  await list.retry()
+  expect(api.mock.calls[2]?.[0].skip).toBe(0)
+  expect(list.records.value.map(/** Читает UID обновлённых строк. */ row => row.uid)).toEqual(['fresh'])
+  expect(list.total.value).toBe(1)
+})

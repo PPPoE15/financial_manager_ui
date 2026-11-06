@@ -17,6 +17,7 @@ export function useTransactionList() {
   let generation = 0
   let limit = 20
   let controller: AbortController | undefined
+  let failedRequest: { skip: number; replace: boolean } | undefined
 
   /** Отменяет запрос и делает его будущий ответ неактуальным. */
   function invalidate() {
@@ -31,6 +32,7 @@ export function useTransactionList() {
     controller = new AbortController()
     loading.value = true
     loadError.value = ''
+    failedRequest = undefined
     try {
       const page = await fetchTransactions({ ...filters.value, skip, limit }, controller.signal)
       if (current !== generation) return
@@ -41,8 +43,10 @@ export function useTransactionList() {
       total.value = page.total
       nextSkip.value = page.next_skip
     } catch {
-      if (current === generation)
+      if (current === generation) {
+        failedRequest = { skip, replace }
         loadError.value = 'Не удалось загрузить операции. Повторите загрузку.'
+      }
     } finally {
       if (current === generation) loading.value = false
     }
@@ -51,6 +55,10 @@ export function useTransactionList() {
   async function reload() {
     invalidate()
     await request(0, true)
+  }
+  /** Повторяет именно неудачную страницу, сохраняя режим замены списка. */
+  async function retry() {
+    if (failedRequest) await request(failedRequest.skip, failedRequest.replace)
   }
   /** Рассчитывает первую порцию по реальной высоте области списка. */
   async function loadInitial(viewportHeight: number, rowHeight: number) {
@@ -98,6 +106,7 @@ export function useTransactionList() {
     loadInitial,
     loadMore,
     reload,
+    retry,
     setFilters,
     toggleAllLoaded,
   }
