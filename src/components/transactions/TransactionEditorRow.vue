@@ -54,6 +54,7 @@ async function begin(field: EditorField) {
 }
 /** Запоминает исходную категорию, оставляя открытие списка нативному контролу. */
 function beginCategory() {
+  if (props.busy || active.value === 'category_uid') return
   before.value = props.draft.values.category_uid
   active.value = 'category_uid'
 }
@@ -68,6 +69,7 @@ async function finish(cancel = false) {
 }
 /** Обрабатывает отмену и подтверждение внутри ячейки. */
 function keydown(event: KeyboardEvent) {
+  if (!active.value && event.target instanceof HTMLSelectElement && event.key !== 'Escape') beginCategory()
   if (!active.value) return
   if (event.key === 'Escape') {
     event.stopPropagation()
@@ -111,6 +113,7 @@ const inputClass =
           v-if="field.key === 'category_uid'"
           :data-field="field.key"
           @focus="beginCategory"
+          @pointerdown="beginCategory"
           :data-cell-input="field.key"
           :aria-label="field.label"
           :value="draft.values[field.key]"

@@ -333,3 +333,24 @@ it('предоставляет категорию как выпадающий с
   expect(select).not.toBeNull()
   expect(select!.disabled).toBe(false)
 })
+
+it.each(['мышью', 'клавиатурой'])('повторно отменяет категорию без потери фокуса: %s', /** Сохраняет исходную категорию при каждом новом редактировании. */ async (mode) => {
+  vi.mocked(listCategories).mockResolvedValue([
+    { uid: 'food', name: 'Продукты', category_type: 'outcome', money_plan: null, description: null },
+    { uid: 'rent', name: 'Аренда', category_type: 'outcome', money_plan: null, description: null },
+  ])
+  await open()
+  const select = document.querySelector<HTMLSelectElement>('[data-uid="one"] select')!
+  select.focus()
+  for (let attempt = 0; attempt < 2; attempt++) {
+    if (mode === 'мышью') select.dispatchEvent(new Event('pointerdown', { bubbles: true }))
+    else select.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }))
+    select.value = 'rent'
+    select.dispatchEvent(new Event('change', { bubbles: true }))
+    await flushPromises()
+    select.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }))
+    await flushPromises()
+    expect(select.value).toBe('food')
+    expect(document.querySelector('[data-editor-dialog]')).toBeNull()
+  }
+})
