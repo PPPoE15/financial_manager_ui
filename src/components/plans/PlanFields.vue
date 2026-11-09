@@ -93,7 +93,7 @@ function pasteAmount(event: ClipboardEvent) {
       >
         <option value="">Выберите категорию</option>
         <option v-for="category in categories" :key="category.uid" :value="category.uid">
-          {{ category.name }}
+          {{ category.category_type === 'income' ? '+' : '−' }} {{ category.name }}
         </option>
       </select>
       <ErrorMessage :id="`${id}-category-error`" :message="errors.category" />

@@ -21,3 +21,10 @@ describe('Поля плана', /** Проверяет блокировку ми
     wrapper.unmount()
   })
 })
+
+it('различает одноимённые категории знаком операции', /** Не позволяет перепутать тип нового плана. */ () => {
+  const wrapper = mount(PlanFields, { props: { modelValue: { date: '2026-11-09', amount: '', category: '', description: '' }, categories: [{ uid: 'i', name: 'Прочее', category_type: 'income', money_plan: null, description: null }, { uid: 'o', name: 'Прочее', category_type: 'outcome', money_plan: null, description: null }], today: '2026-11-09', errors: {} } })
+  expect(wrapper.get('option[value="i"]').text()).toBe('+ Прочее')
+  expect(wrapper.get('option[value="o"]').text()).toBe('− Прочее')
+  wrapper.unmount()
+})
