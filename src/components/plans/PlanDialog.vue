@@ -108,6 +108,15 @@ function keydown(event: KeyboardEvent) {
     first.focus()
   }
 }
+/** Проверяет наличие факта непосредственно перед переходом из деталей. */
+async function openTransaction() {
+  if (busy.value) return
+  busy.value = true
+  try {
+    await loadFact()
+    if (active && transaction.value && current.value && !factError.value) emit('openTransaction', current.value)
+  } finally { busy.value = false }
+}
 /** Отправляет действие, обновляет список и переводит фокус к ошибочному полю. */
 async function save() {
   await submit()
@@ -245,7 +254,7 @@ onBeforeUnmount(
                   v-if="transaction && !factError"
                   type="button"
                   class="mt-5 text-left text-sm text-ink-secondary underline focus-visible:outline"
-                  @click="emit('openTransaction', current)"
+                  :disabled="busy" @click="openTransaction"
                 >
                   Открыть фактическую операцию ↗
                 </button>
@@ -255,9 +264,9 @@ onBeforeUnmount(
               Плановые значения не меняются при изменении факта.
             </p>
             <footer class="mt-6 flex flex-wrap gap-3">
-              <BaseButton variant="secondary" @click="emit('remove', current)"
+              <BaseButton variant="secondary" :disabled="busy" @click="emit('remove', current)"
                 >Удалить план</BaseButton
-              ><BaseButton @click="emit('clone', current)">Запланировать еще</BaseButton
+              ><BaseButton :disabled="busy" @click="emit('clone', current)">Запланировать еще</BaseButton
               ><BaseButton variant="secondary" @click="close">Закрыть</BaseButton>
             </footer>
           </div>

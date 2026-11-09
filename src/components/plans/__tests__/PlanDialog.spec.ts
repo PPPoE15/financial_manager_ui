@@ -33,3 +33,19 @@ describe('Окно планирования', /** Проверяет досту�
     opener.remove()
   })
 })
+
+vi.mock('@/api/plannedOperations')
+import * as api from '@/api/plannedOperations'
+import { plan } from '@/plans/__tests__/fixtures'
+it('скрывает переход при удалении факта после открытия деталей', /** Перечитывает связь вместо открытия устаревшего UID. */ async () => {
+  const completed = plan('p', { status: 'completed', transaction_state: 'available', transaction_uid: 't' })
+  vi.mocked(api.readPlan).mockResolvedValueOnce(completed).mockResolvedValueOnce({ ...completed, transaction_state: 'deleted', transaction_uid: null, version: 3 })
+  vi.mocked(api.readPlanTransaction).mockResolvedValueOnce({ uid: 't', version: 1, transaction_date: '2026-11-09T00:00:00', money_sum: 10, category: { uid: 'c', name: 'ЖКХ' }, transaction_type: 'outcome', description: null }).mockRejectedValueOnce({ response: { status: 404 } })
+  const wrapper = mount(PlanDialog, { attachTo: document.body, props: { mode: 'details', plan: completed, today: '2026-11-09' } })
+  await flushPromises()
+  const button = [...document.querySelectorAll('button')].find(/** Находит переход к фактической записи. */ b => b.textContent?.includes('Открыть фактическую'))!
+  button.click(); await flushPromises()
+  expect(wrapper.emitted('openTransaction')).toBeUndefined()
+  expect(document.querySelector('[role="dialog"]')?.textContent).toContain('Фактическая операция удалена')
+  wrapper.unmount()
+})
