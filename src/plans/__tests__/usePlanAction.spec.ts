@@ -146,3 +146,16 @@ describe('Версии и удаление в формах', /** Проверя�
     expect(action.success.value).toBe(true)
   })
 })
+
+it('не разрешает повтор после неизвестного результата и неудачного GET', /** Требует успешного чтения и явного решения перед новым запросом. */ async () => {
+  vi.mocked(api.readPlan).mockResolvedValueOnce(plan()).mockRejectedValueOnce(new Error('GET failed'))
+  vi.mocked(api.confirmPlan).mockRejectedValue(new Error('POST unknown'))
+  const action = usePlanAction('confirm', plan(), '2026-11-09')
+  await action.load(); await action.submit()
+  expect(action.needsDecision.value).toBe(true)
+  action.acceptCurrent(); await action.submit()
+  expect(api.confirmPlan).toHaveBeenCalledTimes(1)
+  vi.mocked(api.readPlan).mockResolvedValue(plan())
+  await action.reconcile(); action.acceptCurrent(); await action.submit()
+  expect(api.confirmPlan).toHaveBeenCalledTimes(2)
+})

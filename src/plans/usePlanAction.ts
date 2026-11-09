@@ -40,6 +40,7 @@ export function usePlanAction(
   const success = ref(false)
   const unknown = ref(false)
   const needsDecision = ref(false)
+  const currentVerified = ref(false)
   const unavailable = ref(false)
   let expectedVersion = source?.version
   const completed = computed(
@@ -97,10 +98,12 @@ export function usePlanAction(
   /** Перечитывает план после сбоя, но оставляет черновик и согласованную версию прежними. */
   async function reconcile() {
     if (!current.value) return
+    needsDecision.value = true
+    currentVerified.value = false
     try {
       current.value = await readPlan(current.value.uid)
       today.value = current.value.today
-      needsDecision.value = true
+      currentVerified.value = true
       if (completed.value) await loadFact()
     } catch (failure) {
       if (planError(failure).status === 404) {
@@ -111,7 +114,7 @@ export function usePlanAction(
   }
   /** Согласует новую версию явным нажатием после отображения актуальных полей. */
   function acceptCurrent() {
-    if (!current.value || unavailable.value || (completed.value && mode !== 'delete')) return
+    if (!currentVerified.value || !current.value || unavailable.value || (completed.value && mode !== 'delete')) return
     expectedVersion = current.value.version
     needsDecision.value = false
     unknown.value = false
@@ -218,6 +221,7 @@ export function usePlanAction(
     success,
     unknown,
     needsDecision,
+    currentVerified,
     unavailable,
     completed,
     load,

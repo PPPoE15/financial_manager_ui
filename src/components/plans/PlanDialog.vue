@@ -28,6 +28,7 @@ const {
   success,
   unknown,
   needsDecision,
+  currentVerified,
   unavailable,
   completed,
   today,
@@ -307,7 +308,7 @@ onBeforeUnmount(
             <ErrorMessage class="mt-4" :message="message" />
             <p v-if="unavailable" class="mt-3 text-sm">План больше недоступен.</p>
             <div
-              v-if="needsDecision && current && !unavailable"
+              v-if="needsDecision && currentVerified && current && !unavailable"
               class="mt-4 rounded border border-warning/50 p-4 text-sm"
             >
               <p>
@@ -320,6 +321,7 @@ onBeforeUnmount(
                 >Использовать актуальную версию</BaseButton
               >
             </div>
+            <BaseButton v-if="needsDecision && !currentVerified && !unavailable" variant="secondary" class="mt-4" @click="reconcile">Повторить проверку плана</BaseButton>
             <div v-if="unknown" class="mt-4 text-sm">
               <p>
                 {{
