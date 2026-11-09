@@ -181,3 +181,23 @@ state decisions are in `docs/design-theme.md`; the local component preview is `/
 ## UI language
 
 User-facing strings (labels, buttons, messages) are in Russian; keep new text consistent with this.
+
+## Импорт CSV — FM-96
+
+`ImportDialog.vue` использует отдельные подсказки CSV/XLSX: гибкий порядок и дополнительные
+колонки относятся только к CSV. `errors[].row` для CSV — физическая строка начала записи,
+отображать «Строка файла», для XLSX — «Строка Excel», null — «Файл».
+`imports/errors.ts` различает `invalid_encoding` и ошибки структуры внутри FM-422301;
+не подсказывать менять кодировку без соответствующей причины. Сообщения отдельных полей
+берутся из API и выводятся текстом. Не парсить и не преобразовывать CSV на клиенте.
+Подробнее: `docs/import-operations.md`.
+
+## Редактирование операций — FM-100
+
+`TransactionListDialog.vue` открывается из обеих карточек последних операций. Список,
+черновики и версии разделены в `src/transactions/`; сохранение всех dirty-строк атомарное,
+удаление выбранных — частичное. Не обновлять expected_version без явной сверки пользователя.
+После unknown/network/5xx автоматический повтор запрещён. В контракте нет GET по UID:
+`getTransaction` ищет запись в страницах без фильтров; отсутствие не доказывает удаления.
+Сценарии, ограничения и ссылки на Figma: `docs/transaction-editor.md`.
+Локальный preview: `/dev/transaction-editor-preview.html` (ответы в памяти, без авторизации).

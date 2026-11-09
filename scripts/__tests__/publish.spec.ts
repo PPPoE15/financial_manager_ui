@@ -51,13 +51,14 @@ describe('publication gate', () => {
   })
 })
 
+/** Запустить скрипт публикации с управляемыми ответами реестра без сетевого доступа. */
 function run(mode: string, environment = 'dev') {
   const dir = mkdtempSync(resolve(tmpdir(), 'fm63-'))
   dirs.push(dir)
   writeFileSync(resolve(dir, 'docker'), `#!/bin/bash
 printf '%s\\n' "$*" >> "$CALLS"
 if [[ "$*" == 'buildx imagetools inspect '* ]]; then
-  if [[ "$MODE" == existing || -f "$BUILT" ]]; then
+  if [[ "$MODE" == existing || "$MODE" == alias-error || -f "$BUILT" ]]; then
     echo '{"digest":"${digest}"}'
   elif [[ "$MODE" == missing ]]; then
     echo 'ERROR: registry/image:tag: not found' >&2; exit 1
@@ -66,6 +67,8 @@ if [[ "$*" == 'buildx imagetools inspect '* ]]; then
   fi
 elif [[ "$*" == 'buildx build '* ]]; then
   touch "$BUILT"
+elif [[ "$*" == 'buildx imagetools create '* && "$MODE" == alias-error ]]; then
+  echo 'alias update failed' >&2; exit 1
 fi
 `, { mode: 0o755 })
   const result = spawnSync('bash', ['scripts/publish-image.sh'], {
@@ -96,8 +99,18 @@ describe('publication script with a simulated registry', () => {
     expect(result.status, result.stderr).toBe(0)
     expect(calls).not.toContain('buildx build')
     expect(calls).not.toContain(`--tag example/fm-ui:${sha}`)
+    expect(calls).toContain(`--tag example/fm-ui:dev example/fm-ui@${digest}`)
     expect(metadata.image).toBe(`example/fm-ui@${digest}`)
   })
+  it.each(['dev', 'master'])('fails publication if the %s tag cannot be updated',
+    /** Проверить, что ошибка обновления тега не создаёт успешные метаданные публикации. */
+    environment => {
+      const { result, metadata, output } = run('alias-error', environment)
+      expect(result.status).not.toBe(0)
+      expect(result.stderr).toContain('alias update failed')
+      expect(metadata).toBeNull()
+      expect(output).toBe('')
+    })
   it('fails closed on registry errors', () => {
     const { result, calls, metadata } = run('error')
     expect(result.status).not.toBe(0)

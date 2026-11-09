@@ -28,5 +28,21 @@ Master требует required reviewer в настройках окружени
 [fm_devops deployment guide](https://github.com/PPPoE15/fm_devops/blob/dev/docs/deployment.md).
 На сервере должен быть установлен контроллер FM-66 и выполнен bootstrap.
 Повторять неудачный деплой через Re-run failed jobs, сохраняя digest успешной публикации.
-SSH-клиент и тесты синхронны в трёх репозиториях: scripts/deploy-ssh.py,
-scripts/tests/test_deploy_ssh.py. Проверка: python3 -m unittest discover -s scripts/tests -p test_deploy_ssh.py -v.
+Клиент `scripts/deploy-ssh.py` выводит проверку входных данных, SSH-этап, digest и время
+операции. При отказе он показывает безопасное описание ошибки подключения или
+ответа контроллера. Если контроллер указал журнал, прочитайте его на сервере
+в `DEPLOY_ROOT/logs`. Итог и применённые digest доступны в Job Summary.
+
+Проверка клиента: `python3 -m unittest discover -s scripts/tests -p test_deploy_ssh.py -v`.
+
+## Публикация Docker-образов
+
+После успешного CI на push в `dev` или `master` публикуется SHA-версия
+`pppoe15/fm-ui:<полный SHA>`, затем тег ветки обновляется на её digest без
+пересборки. При повторном запуске существующая SHA-версия используется повторно,
+а тег ветки обновляется снова. Поэтому `make up_dev` и `make update_front`
+в `fm_devops` получают образ через `pppoe15/fm-ui:dev`.
+
+Ошибка обновления тега останавливает публикацию до записи успешных метаданных.
+В логе выводятся обновлённый тег и digest; точная ссылка для развёртывания
+конкретной версии сохраняется в `publication.json`.

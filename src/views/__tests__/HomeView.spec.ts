@@ -1,3 +1,4 @@
+import TransactionListDialog from '@/components/transactions/TransactionListDialog.vue'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
@@ -93,6 +94,7 @@ describe('HomeView', () => {
     vi.mocked(listTransactions).mockImplementation(async (type) => [
       {
         uid: type,
+        version: 1,
         transaction_date: '2026-10-15T12:00:00',
         category: { uid: 'category', name },
         money_sum: 100,
@@ -121,3 +123,35 @@ describe('HomeView', () => {
     expect(mount(HomeView).findComponent(FirstStepDialog).exists()).toBe(true)
   })
 })
+
+it.each(['income', 'outcome'] as const)(
+  'открывает единое окно операций %s и обновляет данные',
+  /** Проверяет интеграцию окна с обеими карточками и отчётами. */ async (type) => {
+    setActivePinia(createPinia())
+    vi.mocked(listTransactions).mockResolvedValue([])
+    vi.mocked(getBudgetStructure).mockReturnValue(new Promise(/** Оставляет отчёт загружающимся. */ () => {}))
+    vi.mocked(getStartingBalance).mockReturnValue(new Promise(/** Оставляет остаток загружающимся. */ () => {}))
+    const wrapper = mount(HomeView, {
+      global: { stubs: { TransactionListDialog: true, FirstStepDialog: true } },
+    })
+    await flushPromises()
+    const card = wrapper
+      .findAllComponents(RecentTransactionsCard)
+      .find(/** Выбирает карточку нужного типа. */ (item) => item.props('type') === type)!
+    card.vm.$emit('open', type, 'record-uid')
+    await flushPromises()
+    const dialog = wrapper.getComponent(TransactionListDialog)
+    expect(dialog.props()).toMatchObject({ type, initialUid: 'record-uid' })
+    vi.mocked(listTransactions).mockClear()
+    vi.mocked(getBudgetStructure).mockClear()
+    dialog.vm.$emit('changed')
+    await flushPromises()
+    expect(listTransactions).toHaveBeenCalledWith('income')
+    expect(listTransactions).toHaveBeenCalledWith('outcome')
+    expect(getBudgetStructure).toHaveBeenCalledTimes(1)
+    dialog.vm.$emit('close')
+    await flushPromises()
+    expect(wrapper.findComponent(TransactionListDialog).exists()).toBe(false)
+    wrapper.unmount()
+  },
+)

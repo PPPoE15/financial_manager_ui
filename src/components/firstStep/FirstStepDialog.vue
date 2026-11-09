@@ -9,8 +9,28 @@ import { useFirstStep } from '@/firstStep/useFirstStep'
 // Окно «Первый шаг» по макету «Приветствие» (секция «Новый дизайн», узел 220:81) поверх главной.
 // FM-59: градиентная панель нового дизайна. Окно обязательное:
 // крестика в макете нет, Escape и клик по фону его не закрывают, фокус удерживается внутри.
-const { needName, needBalance, visible, form, errors, message, submitting, check, submit } =
-  useFirstStep()
+const {
+  needName,
+  needBalance,
+  visible,
+  form,
+  errors,
+  message,
+  submitting,
+  check,
+  submit,
+  openBalance,
+} = useFirstStep()
+
+const emit = defineEmits<{ 'balance-saved': [] }>()
+defineExpose({ openBalance })
+watch(
+  needBalance,
+  /** Сообщает о сохранении остатка независимо от результата сохранения имени. */
+  (needed, wasNeeded) => {
+    if (wasNeeded && !needed) emit('balance-saved')
+  },
+)
 
 const titleId = useId()
 const panel = ref<HTMLElement | null>(null)

@@ -55,6 +55,7 @@ export interface FirstStep {
   errors: Ref<Partial<Record<FirstStepField, string>>>
   message: Ref<string | null>
   submitting: Ref<boolean>
+  openBalance: () => void
   check: () => Promise<void>
   submit: () => Promise<void>
 }
@@ -75,6 +76,14 @@ export function useFirstStep(): FirstStep {
   const errors = ref<Partial<Record<FirstStepField, string>>>({})
   const message = ref<string | null>(null)
   const submitting = ref(false)
+  let checkVersion = 0
+
+  /** Открывает ввод остатка по подтверждённому ответу FM-409203. */
+  function openBalance(): void {
+    checkVersion++
+    needName.value = session.user?.name === null
+    needBalance.value = true
+  }
 
   // TODO(FM-39): запрос уходит при каждом открытии главной, хотя заданный остаток уже не меняется —
   // запоминать результат в store на время сессии.
@@ -90,11 +99,13 @@ export function useFirstStep(): FirstStep {
   }
 
   async function check(): Promise<void> {
+    const version = ++checkVersion
     // Без загруженного пользователя (GET /me не удался) имя неизвестно — блок имени не показываем.
     // NOTE(FM-39): проверка делается один раз при открытии главной; если в этот момент /me не загрузился,
     // имя спросят только после перезагрузки страницы.
     const nameMissing = session.user !== null && session.user.name === null
     const balanceMissing = await isStartingBalanceMissing()
+    if (version !== checkVersion) return
     // Оба флага выставляются вместе, чтобы окно не появилось сначала с одним блоком, а потом с двумя
     needName.value = nameMissing
     needBalance.value = balanceMissing
@@ -149,5 +160,16 @@ export function useFirstStep(): FirstStep {
     }
   }
 
-  return { needName, needBalance, visible, form, errors, message, submitting, check, submit }
+  return {
+    needName,
+    needBalance,
+    visible,
+    form,
+    errors,
+    message,
+    submitting,
+    check,
+    submit,
+    openBalance,
+  }
 }
