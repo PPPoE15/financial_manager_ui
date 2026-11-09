@@ -83,6 +83,7 @@ function value(plan: PlannedOperation, key: keyof PlanDraft) {
   if (key === 'date') return formatPlanDate(draft.date)
   if (key === 'amount')
     return `${plan.transaction_type === 'income' ? '+' : '−'}${Number(draft.amount).toLocaleString('ru-RU')} ₽`
+  if (key === 'category' && plan.status === 'completed') return plan.category.name
   if (key === 'category')
     return (
       categories.value.find(

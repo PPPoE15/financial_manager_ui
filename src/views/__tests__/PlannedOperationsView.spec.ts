@@ -45,3 +45,13 @@ describe('Список планов', /** Проверяет отдельный 
     wrapper.unmount()
   })
 })
+
+it('показывает сохранённое имя категории выполненного плана', /** Не подменяет снимок последующим переименованием категории. */ async () => {
+  vi.mocked(api.loadPlans).mockResolvedValue({ content: [plan('p', { status: 'completed', category: { uid: 'c', name: 'Исходное имя' } })], total: 1, due_count: 0, next_skip: null, today: '2026-11-09', timezone: 'Europe/Moscow' })
+  const router = createRouter({ history: createMemoryHistory(), routes: [{ path: '/', component: PlannedOperationsView }] })
+  await router.push('/'); await router.isReady()
+  const wrapper = mount(PlannedOperationsView, { global: { plugins: [router] } })
+  await flushPromises()
+  expect(wrapper.get('[data-plan-uid="p"]').text()).toContain('Исходное имя')
+  wrapper.unmount()
+})
