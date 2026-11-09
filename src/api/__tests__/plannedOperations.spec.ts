@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { http } from '@/api/client'
 import {
   loadPlans,
+  loadUpcomingPlans,
   createPlan,
   updatePlan,
   deletePlan,
@@ -80,4 +81,24 @@ describe('Контракт планов', /** Проверяет пагинац�
     expect(del).toHaveBeenCalledWith('/planned-operations/p', { params: { expected_version: 2 } })
     expect(get).toHaveBeenCalledWith('/transactions/t')
   })
+})
+
+it('запрашивает только четыре ближайших невыполненных плана без ограничения даты', /** Не загружает весь список или только наступившие записи. */ async () => {
+  const get = vi.spyOn(http, 'get').mockResolvedValue({
+    data: {
+      content: [],
+      total: 10,
+      due_count: 2,
+      next_skip: 4,
+      today: '2026-11-10',
+      timezone: 'Europe/Moscow',
+    },
+  })
+  const controller = new AbortController()
+  const result = await loadUpcomingPlans(controller.signal)
+  expect(get).toHaveBeenCalledExactlyOnceWith('/planned-operations', {
+    params: { include_completed: false, limit: 4, skip: 0 },
+    signal: controller.signal,
+  })
+  expect(result.next_skip).toBe(4)
 })

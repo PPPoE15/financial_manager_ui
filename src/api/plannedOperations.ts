@@ -68,3 +68,12 @@ export async function confirmPlan(uid: string, body: PlanConfirmation): Promise<
 export async function readPlanTransaction(uid: string): Promise<Transaction> {
   return (await http.get<Transaction>(`/transactions/${encodeURIComponent(uid)}`)).data
 }
+/** Читает четыре ближайших невыполненных плана, включая будущие даты. */
+export async function loadUpcomingPlans(signal?: AbortSignal): Promise<PlannedOperationList> {
+  return (
+    await http.get<PlannedOperationList>('/planned-operations', {
+      params: { include_completed: false, limit: 4, skip: 0 },
+      signal,
+    })
+  ).data
+}
