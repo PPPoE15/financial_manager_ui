@@ -7,9 +7,9 @@ import {
 } from 'vue-router'
 
 import { guards as appGuards } from '@/router/guards'
-import { HOME_ROUTE, LOGIN_ROUTE, REGISTER_ROUTE } from '@/router/names'
+import { HOME_ROUTE, LOGIN_ROUTE, REGISTER_ROUTE, PLANNED_OPERATIONS_ROUTE } from '@/router/names'
 
-export { HOME_ROUTE, LOGIN_ROUTE, REGISTER_ROUTE } from '@/router/names'
+export { HOME_ROUTE, LOGIN_ROUTE, REGISTER_ROUTE, PLANNED_OPERATIONS_ROUTE } from '@/router/names'
 
 export function createAppRouter(
   history: RouterHistory,
@@ -22,7 +22,15 @@ export function createAppRouter(
       {
         path: '/',
         component: () => import('@/components/layout/AppLayout.vue'),
-        children: [{ path: '', name: HOME_ROUTE, component: () => import('@/views/HomeView.vue') }],
+        children: [
+          { path: '', name: HOME_ROUTE, component: () => import('@/views/HomeView.vue') },
+          {
+            path: 'planned-operations',
+            name: PLANNED_OPERATIONS_ROUTE,
+            component: /** Загружает отдельный экран планов. */ () =>
+              import('@/views/PlannedOperationsView.vue'),
+          },
+        ],
       },
       // Вход и регистрация — один экран с двумя режимами; режим задаёт маршрут, чтобы вкладку
       // можно было открыть по ссылке и вернуться к ней кнопкой «Назад»

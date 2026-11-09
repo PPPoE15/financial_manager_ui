@@ -1,13 +1,14 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import { RouterLink, RouterView, useRoute } from 'vue-router'
+import { RouterLink, RouterView, useRoute, useRouter } from 'vue-router'
 
 import logoUrl from '@/assets/new-design/logo.svg'
 import { useSignOut } from '@/auth/useSignOut'
-import { HOME_ROUTE } from '@/router/names'
+import { HOME_ROUTE, PLANNED_OPERATIONS_ROUTE } from '@/router/names'
 import { useSessionStore } from '@/stores/session'
 
 const route = useRoute()
+const router = useRouter()
 const session = useSessionStore()
 const signOut = useSignOut()
 const userName = computed(() => session.user?.name?.trim() || 'Профиль')
@@ -20,9 +21,20 @@ const operationsRequested = ref(false)
 const focusStyle =
   'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus'
 const menu = [
-  { label: 'Обзор', hash: '' },
-  { label: 'Мои категории', hash: '#categories' },
+  { label: 'Обзор', hash: '', name: HOME_ROUTE },
+  { label: 'Запланированные операции', hash: '', name: PLANNED_OPERATIONS_ROUTE },
+  { label: 'Мои категории', hash: '#categories', name: HOME_ROUTE },
 ]
+
+/** Переходит на главную перед открытием её существующих окон. */
+async function requestHomeAction(action: 'operations' | 'import') {
+  if (route.name !== HOME_ROUTE) {
+    const failure = await router.push({ name: HOME_ROUTE })
+    if (failure) return
+  }
+  if (action === 'operations') operationsRequested.value = true
+  else importRequested.value = true
+}
 
 async function openProfile() {
   open.value = true
@@ -78,30 +90,40 @@ onBeforeUnmount(() => {
         <RouterLink
           v-for="item in menu"
           :key="item.label"
-          :to="{ name: HOME_ROUTE, hash: item.hash }"
-          :aria-current="route.hash === item.hash ? (item.hash ? 'location' : 'page') : 'false'"
+          :to="{ name: item.name, hash: item.hash }"
+          :aria-current="
+            route.name === item.name && route.hash === item.hash
+              ? item.hash
+                ? 'location'
+                : 'page'
+              : 'false'
+          "
           class="flex min-h-11 items-center rounded px-3 text-sm lg:px-6"
           :class="[
             focusStyle,
-            route.hash === item.hash
+            route.name === item.name && route.hash === item.hash
               ? 'bg-action font-bold text-action-foreground'
               : 'text-ink-secondary hover:bg-surface-muted',
           ]"
         >
-          {{ item.label }}
+          <span :class="item.name === PLANNED_OPERATIONS_ROUTE && 'text-caption'">{{
+            item.label
+          }}</span>
         </RouterLink>
         <button
           data-my-operations
           type="button"
           class="flex min-h-11 items-center rounded px-3 text-sm text-ink-secondary hover:bg-surface-muted lg:px-6"
           :class="focusStyle"
-          @click="operationsRequested = true"
-        >Мои операции</button>
+          @click="requestHomeAction('operations')"
+        >
+          Мои операции
+        </button>
         <button
           type="button"
           class="flex min-h-11 items-center rounded px-3 text-sm text-ink-secondary hover:bg-surface-muted lg:px-6"
           :class="focusStyle"
-          @click="importRequested = true"
+          @click="requestHomeAction('import')"
         >
           Импорт CSV
         </button>
