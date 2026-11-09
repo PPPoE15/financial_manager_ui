@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
 import { onBeforeRouteLeave } from 'vue-router'
+import { LOGIN_ROUTE } from '@/router/names'
 import { usePlans } from '@/plans/usePlans'
 import { draftFromPlan, formatPlanDate, type PlanDraft } from '@/plans/model'
 import type { PlanAction } from '@/plans/usePlanAction'
@@ -162,7 +163,8 @@ function beforeUnload(event: BeforeUnloadEvent) {
   if (dirty.value || saving.value || dialog.value) event.preventDefault()
 }
 onBeforeRouteLeave(
-  /** Не допускает незаметной потери черновика или незавершённого действия. */ () => {
+  /** Не блокирует окончание сессии; защищает черновик при обычной навигации. */ (to) => {
+    if (to.name === LOGIN_ROUTE) return true
     if (dirty.value || saving.value || dialog.value) {
       leaveMessage.value = 'Сохраните или отмените изменения и закройте окно перед переходом.'
       return false

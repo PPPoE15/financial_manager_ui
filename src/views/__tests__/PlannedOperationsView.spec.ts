@@ -55,3 +55,15 @@ it('показывает сохранённое имя категории вып
   expect(wrapper.get('[data-plan-uid="p"]').text()).toContain('Исходное имя')
   wrapper.unmount()
 })
+
+it('пропускает переход на вход при незавершённом редактировании', /** Защита черновика не блокирует окончание сессии. */ async () => {
+  vi.mocked(api.loadPlans).mockResolvedValue({ content: [plan()], total: 1, due_count: 1, next_skip: null, today: '2026-11-09', timezone: 'Europe/Moscow' })
+  const router = createRouter({ history: createMemoryHistory(), routes: [{ path: '/', component: PlannedOperationsView }, { path: '/login', name: 'login', component: { template: '<p>Вход</p>' } }] })
+  await router.push('/'); await router.isReady()
+  const wrapper = mount({ template: '<router-view />' }, { global: { plugins: [router] } })
+  await flushPromises()
+  await wrapper.get('[data-edit="amount"]').trigger('click')
+  await router.push({ name: 'login' })
+  expect(router.currentRoute.value.name).toBe('login')
+  wrapper.unmount()
+})
