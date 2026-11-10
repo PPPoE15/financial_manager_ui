@@ -1,3 +1,4 @@
+vi.mock('@/components/plans/UpcomingPlansCard.vue', /** Отделяет прежние сценарии главной от нового виджета с собственными интеграционными тестами. */ () => ({default: {template: '<div />', methods: { /** Заглушает обновление отдельно проверяемого виджета. */ reload() {} }}}))
 import { beforeEach, expect, it, vi } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'

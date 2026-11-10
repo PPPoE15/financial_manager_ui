@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { computed, nextTick, ref, useTemplateRef, watch } from 'vue'
 
+import UpcomingPlansCard from '@/components/plans/UpcomingPlansCard.vue'
+import type { PlannedOperation } from '@/types/plannedOperation'
 import BalanceHistoryCard from '@/components/balanceHistory/BalanceHistoryCard.vue'
 import BudgetStructureCard from '@/components/budget/BudgetStructureCard.vue'
 import RecentTransactionsCard from '@/components/transactions/RecentTransactionsCard.vue'
@@ -18,6 +20,7 @@ const incomeCard = useTemplateRef('incomeCard')
 const outcomeCard = useTemplateRef('outcomeCard')
 const budgetCard = useTemplateRef('budgetCard')
 const historyCard = useTemplateRef('historyCard')
+const plansCard = useTemplateRef('plansCard')
 const firstStep = useTemplateRef('firstStep')
 const entryType = ref<TransactionType | null>(null)
 const operations = ref<{ type: TransactionType; uid?: string } | null>(null)
@@ -28,7 +31,9 @@ function openOperations(type: TransactionType, uid?: string) {
 
 watch(
   /** Читает запрос открытия списка из бокового меню. */ () => props.operationsRequested,
-  /** Открывает расходы и подтверждает обработку запроса для повторного открытия. */ (requested) => {
+  /** Открывает расходы и подтверждает обработку запроса для повторного открытия. */ (
+    requested,
+  ) => {
     if (requested) {
       openOperations('outcome')
       emit('operationsOpened')
@@ -39,11 +44,29 @@ watch(
 
 /** Обновляет отчёты после успешно сохранённых операций. */
 function onTransactionsSaved() {
+  void plansCard.value?.reload()
+  refreshReports()
+}
+
+/** Перечитывает фактические суммы после изменения планов или операций. */
+function refreshReports() {
   void historyCard.value?.reload()
   reloadRecentTransactions()
   void budgetCard.value?.reload()
 }
 
+/** Открывает связанный факт из карточки выполненного плана. */
+function openPlanTransaction(plan: PlannedOperation) {
+  openOperations(plan.transaction_type, plan.transaction_uid ?? undefined)
+}
+
+/** Обновляет названия категорий в планах и фактических записях. */
+function onCategoriesSaved() {
+  reloadRecentTransactions()
+  void plansCard.value?.reload()
+}
+
+/** Переключает окно ввода на редактор категорий. */
 async function editCategories() {
   entryType.value = null
   // Сначала снять inert старого окна и вернуть фокус, затем открыть редактор.
@@ -51,6 +74,7 @@ async function editCategories() {
   budgetCard.value?.openEditor()
 }
 
+/** Перечитывает последние записи обоих типов. */
 function reloadRecentTransactions() {
   void incomeCard.value?.reload()
   void outcomeCard.value?.reload()
@@ -94,8 +118,14 @@ const greeting = computed(() =>
         tabindex="-1"
         class="min-w-0 scroll-mt-4 rounded focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus xl:col-start-2"
       >
-        <BudgetStructureCard ref="budgetCard" @categories-saved="reloadRecentTransactions" />
+        <BudgetStructureCard ref="budgetCard" @categories-saved="onCategoriesSaved" />
       </div>
+      <UpcomingPlansCard
+        ref="plansCard"
+        class="order-first xl:order-none xl:col-start-2 xl:row-start-2"
+        @changed="refreshReports"
+        @open-transaction="openPlanTransaction"
+      />
       <BalanceHistoryCard
         ref="historyCard"
         class="xl:col-start-1"
