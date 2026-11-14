@@ -25,7 +25,7 @@ describe('Список планов', /** Проверяет отдельный 
     })
     const router = createRouter({
       history: createMemoryHistory(),
-      routes: [{ path: '/', component: PlannedOperationsView }],
+      routes: [{ path: '/', name: 'planned-operations', component: PlannedOperationsView }, { path: '/regular', name: 'regular-operations', component: PlannedOperationsView }],
     })
     await router.push('/')
     await router.isReady()
@@ -48,7 +48,7 @@ describe('Список планов', /** Проверяет отдельный 
 
 it('показывает сохранённое имя категории выполненного плана', /** Не подменяет снимок последующим переименованием категории. */ async () => {
   vi.mocked(api.loadPlans).mockResolvedValue({ content: [plan('p', { status: 'completed', category: { uid: 'c', name: 'Исходное имя' } })], total: 1, due_count: 0, next_skip: null, today: '2026-11-09', timezone: 'Europe/Moscow' })
-  const router = createRouter({ history: createMemoryHistory(), routes: [{ path: '/', component: PlannedOperationsView }] })
+  const router = createRouter({ history: createMemoryHistory(), routes: [{ path: '/', name: 'planned-operations', component: PlannedOperationsView }, { path: '/regular', name: 'regular-operations', component: PlannedOperationsView }] })
   await router.push('/'); await router.isReady()
   const wrapper = mount(PlannedOperationsView, { global: { plugins: [router] } })
   await flushPromises()
@@ -58,7 +58,7 @@ it('показывает сохранённое имя категории вып
 
 it('пропускает переход на вход при незавершённом редактировании', /** Защита черновика не блокирует окончание сессии. */ async () => {
   vi.mocked(api.loadPlans).mockResolvedValue({ content: [plan()], total: 1, due_count: 1, next_skip: null, today: '2026-11-09', timezone: 'Europe/Moscow' })
-  const router = createRouter({ history: createMemoryHistory(), routes: [{ path: '/', component: PlannedOperationsView }, { path: '/login', name: 'login', component: { template: '<p>Вход</p>' } }] })
+  const router = createRouter({ history: createMemoryHistory(), routes: [{ path: '/', name: 'planned-operations', component: PlannedOperationsView }, { path: '/regular', name: 'regular-operations', component: PlannedOperationsView }, { path: '/login', name: 'login', component: { template: '<p>Вход</p>' } }] })
   await router.push('/'); await router.isReady()
   const wrapper = mount({ template: '<router-view />' }, { global: { plugins: [router] } })
   await flushPromises()

@@ -10,3 +10,11 @@ describe('Маршрут планов', /** Проверяет прямую сс
     expect(route.meta.guestOnly).toBeUndefined()
   })
 })
+
+it('открывает вкладку и конкретную регулярную операцию по ссылке', /** Проверяет прямой вход и обновление страницы. */ () => {
+  const router = createAppRouter(createMemoryHistory(), [])
+  expect(router.resolve('/planned-operations/regular').name).toBe('regular-operations')
+  const operation = router.resolve('/planned-operations/regular/series-1')
+  expect(operation.name).toBe('regular-operation')
+  expect(operation.params.operationUid).toBe('series-1')
+})

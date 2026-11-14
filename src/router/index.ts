@@ -7,9 +7,23 @@ import {
 } from 'vue-router'
 
 import { guards as appGuards } from '@/router/guards'
-import { HOME_ROUTE, LOGIN_ROUTE, REGISTER_ROUTE, PLANNED_OPERATIONS_ROUTE } from '@/router/names'
+import {
+  HOME_ROUTE,
+  LOGIN_ROUTE,
+  REGISTER_ROUTE,
+  PLANNED_OPERATIONS_ROUTE,
+  REGULAR_OPERATIONS_ROUTE,
+  REGULAR_OPERATION_ROUTE,
+} from '@/router/names'
 
-export { HOME_ROUTE, LOGIN_ROUTE, REGISTER_ROUTE, PLANNED_OPERATIONS_ROUTE } from '@/router/names'
+export {
+  HOME_ROUTE,
+  LOGIN_ROUTE,
+  REGISTER_ROUTE,
+  PLANNED_OPERATIONS_ROUTE,
+  REGULAR_OPERATIONS_ROUTE,
+  REGULAR_OPERATION_ROUTE,
+} from '@/router/names'
 
 export function createAppRouter(
   history: RouterHistory,
@@ -29,6 +43,18 @@ export function createAppRouter(
             name: PLANNED_OPERATIONS_ROUTE,
             component: /** Загружает отдельный экран планов. */ () =>
               import('@/views/PlannedOperationsView.vue'),
+          },
+          {
+            path: 'planned-operations/regular',
+            name: REGULAR_OPERATIONS_ROUTE,
+            component: /** Загружает вкладку регулярных операций. */ () =>
+              import('@/views/RegularOperationsView.vue'),
+          },
+          {
+            path: 'planned-operations/regular/:operationUid',
+            name: REGULAR_OPERATION_ROUTE,
+            component: /** Открывает регулярную операцию по адресу. */ () =>
+              import('@/views/RegularOperationsView.vue'),
           },
         ],
       },

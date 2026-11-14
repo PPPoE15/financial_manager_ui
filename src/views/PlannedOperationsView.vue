@@ -12,6 +12,7 @@ import { listCategories } from '@/api/categories'
 import BaseButton from '@/components/ui/BaseButton.vue'
 import ErrorMessage from '@/components/ui/ErrorMessage.vue'
 import PlanFields from '@/components/plans/PlanFields.vue'
+import PlanningHeader from '@/components/plans/PlanningHeader.vue'
 import PlanDialog from '@/components/plans/PlanDialog.vue'
 import TransactionListDialog from '@/components/transactions/TransactionListDialog.vue'
 const {
@@ -193,12 +194,7 @@ onBeforeUnmount(
 </script>
 <template>
   <div class="min-w-0 px-4 pb-8 pt-6 sm:px-6 lg:px-[38px] lg:pt-8">
-    <h1 class="break-words font-brand text-xl font-medium sm:text-2xl lg:pr-[260px]">
-      Запланированные операции
-    </h1>
-    <p class="mt-3 text-sm text-ink-muted">
-      Предстоящие доходы и расходы. Подтверждайте их, когда операция произошла.
-    </p>
+    <PlanningHeader />
     <section
       aria-label="Список планов"
       class="mt-7 min-w-0 rounded-md bg-surface-card/80 p-4 sm:p-7"
