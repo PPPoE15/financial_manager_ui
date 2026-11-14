@@ -1,11 +1,12 @@
 <script setup lang="ts">
 import { nextTick, onBeforeUnmount, onMounted, ref, useId } from 'vue'
-import { RouterLink } from 'vue-router'
+import { RouterLink, useRouter } from 'vue-router'
 import { loadUpcomingPlans } from '@/api/plannedOperations'
-import { formatPlanDate } from '@/plans/model'
+import { formatPlanDate, type PlanDraft } from '@/plans/model'
 import type { PlanAction } from '@/plans/usePlanAction'
 import type { PlannedOperation } from '@/types/plannedOperation'
 import { PLANNED_OPERATIONS_ROUTE } from '@/router/names'
+import { openRegularCreation } from '@/regularOperations/navigation'
 import { formatMoney } from '@/utils/money'
 import BaseButton from '@/components/ui/BaseButton.vue'
 import ErrorMessage from '@/components/ui/ErrorMessage.vue'
@@ -13,6 +14,7 @@ import RegularPlanBadge from './RegularPlanBadge.vue'
 import PlanDialog from './PlanDialog.vue'
 
 const emit = defineEmits<{ changed: []; openTransaction: [plan: PlannedOperation] }>()
+const router = useRouter()
 const titleId = useId()
 const rows = ref<PlannedOperation[]>([])
 const today = ref('')
@@ -63,6 +65,10 @@ async function openTransaction(plan: PlannedOperation) {
   dialog.value = null
   await nextTick()
   if (active) emit('openTransaction', plan)
+}
+/** Передаёт черновик плана, созданного через «Запланировать еще» на главной. */
+async function repeat(draft: PlanDraft) {
+  await openRegularCreation(router, { draft })
 }
 onMounted(
   /** Подключает обновление без локального вычисления сегодняшнего дня. */ () => {
@@ -165,7 +171,8 @@ defineExpose({ reload })
       :today="today"
       @close="dialog = null"
       @changed="changed"
-      @open-regular="$router.push($event)"
+      @open-regular="router.push($event)"
+      @repeat="repeat"
       @clone="open('create', $event)"
       @remove="open('delete', $event)"
       @open-transaction="openTransaction"
