@@ -72,7 +72,7 @@ export async function readPlanTransaction(uid: string): Promise<Transaction> {
 export async function loadUpcomingPlans(signal?: AbortSignal): Promise<PlannedOperationList> {
   return (
     await http.get<PlannedOperationList>('/planned-operations', {
-      params: { include_completed: false, limit: 4, skip: 0 },
+      params: { include_completed: false, include_regular: true, limit: 4, skip: 0 },
       signal,
     })
   ).data

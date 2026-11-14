@@ -1,17 +1,20 @@
 <script setup lang="ts">
 import { nextTick, onBeforeUnmount, onMounted, ref, useId } from 'vue'
-import { RouterLink } from 'vue-router'
+import { RouterLink, useRouter } from 'vue-router'
 import { loadUpcomingPlans } from '@/api/plannedOperations'
-import { formatPlanDate } from '@/plans/model'
+import { formatPlanDate, type PlanDraft } from '@/plans/model'
 import type { PlanAction } from '@/plans/usePlanAction'
 import type { PlannedOperation } from '@/types/plannedOperation'
 import { PLANNED_OPERATIONS_ROUTE } from '@/router/names'
+import { openRegularCreation } from '@/regularOperations/navigation'
 import { formatMoney } from '@/utils/money'
 import BaseButton from '@/components/ui/BaseButton.vue'
 import ErrorMessage from '@/components/ui/ErrorMessage.vue'
+import RegularPlanBadge from './RegularPlanBadge.vue'
 import PlanDialog from './PlanDialog.vue'
 
 const emit = defineEmits<{ changed: []; openTransaction: [plan: PlannedOperation] }>()
+const router = useRouter()
 const titleId = useId()
 const rows = ref<PlannedOperation[]>([])
 const today = ref('')
@@ -63,6 +66,10 @@ async function openTransaction(plan: PlannedOperation) {
   await nextTick()
   if (active) emit('openTransaction', plan)
 }
+/** Передаёт черновик плана, созданного через «Запланировать еще» на главной. */
+async function repeat(draft: PlanDraft) {
+  await openRegularCreation(router, { draft })
+}
 onMounted(
   /** Подключает обновление без локального вычисления сегодняшнего дня. */ () => {
     void reload()
@@ -90,7 +97,7 @@ defineExpose({ reload })
       <RouterLink
         :to="{ name: PLANNED_OPERATIONS_ROUTE }"
         class="rounded underline decoration-ink/30 underline-offset-8 hover:text-ink-secondary focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus"
-        >Планирование операций</RouterLink
+        >Планирование</RouterLink
       >
     </h2>
     <div class="mt-4 min-w-0">
@@ -130,9 +137,10 @@ defineExpose({ reload })
               {{ plan.planned_date < today ? 'Просрочено' : 'Сегодня' }}
             </p>
           </div>
-          <span class="min-w-0 break-words font-semibold" :title="plan.category.name">{{
-            plan.category.name
-          }}</span>
+          <div class="min-w-0 break-words">
+            <span class="font-semibold" :title="plan.category.name">{{ plan.category.name }}</span>
+            <RegularPlanBadge v-if="plan.recurrence" :recurrence="plan.recurrence" />
+          </div>
           <span
             class="text-right font-bold tabular-nums"
             :class="plan.transaction_type === 'income' && 'text-success'"
@@ -163,6 +171,8 @@ defineExpose({ reload })
       :today="today"
       @close="dialog = null"
       @changed="changed"
+      @open-regular="router.push($event)"
+      @repeat="repeat"
       @clone="open('create', $event)"
       @remove="open('delete', $event)"
       @open-transaction="openTransaction"

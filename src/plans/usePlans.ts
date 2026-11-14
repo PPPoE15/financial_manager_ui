@@ -21,7 +21,7 @@ export interface EditedPlan {
 export function usePlans() {
   const rows = ref<PlannedOperation[]>([])
   const drafts = ref<Record<string, EditedPlan>>({})
-  const filters = ref<PlanFilters>({ include_completed: false })
+  const filters = ref<PlanFilters>({ include_completed: false, include_regular: true })
   const today = ref('')
   const total = ref(0)
   const dueCount = ref(0)
