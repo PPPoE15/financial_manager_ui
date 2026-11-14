@@ -12,6 +12,12 @@ export interface PlannedOperation {
   completed_at: string | null
   transaction_uid: string | null
   transaction_state: 'none' | 'available' | 'deleted'
+  recurrence?: {
+    operation_uid: string
+    scheduled_date: string
+    operation_status: 'active' | 'ended' | 'deleted'
+    is_exception: boolean
+  } | null
   today: string
   timezone: string
 }

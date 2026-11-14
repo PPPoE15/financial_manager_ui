@@ -4,7 +4,7 @@ import { RouterLink, RouterView, useRoute, useRouter } from 'vue-router'
 
 import logoUrl from '@/assets/new-design/logo.svg'
 import { useSignOut } from '@/auth/useSignOut'
-import { HOME_ROUTE, PLANNED_OPERATIONS_ROUTE } from '@/router/names'
+import { HOME_ROUTE, PLANNED_OPERATIONS_ROUTE, REGULAR_OPERATION_ROUTE, REGULAR_OPERATIONS_ROUTE } from '@/router/names'
 import { useSessionStore } from '@/stores/session'
 
 const route = useRoute()
@@ -22,9 +22,16 @@ const focusStyle =
   'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus'
 const menu = [
   { label: 'Обзор', hash: '', name: HOME_ROUTE },
-  { label: 'Запланированные операции', hash: '', name: PLANNED_OPERATIONS_ROUTE },
+  { label: 'Планирование', hash: '', name: PLANNED_OPERATIONS_ROUTE },
   { label: 'Мои категории', hash: '#categories', name: HOME_ROUTE },
 ]
+
+/** Сохраняет выделение пункта на обеих вкладках планирования. */
+function menuActive(item: (typeof menu)[number]) {
+  return (route.name === item.name && route.hash === item.hash) ||
+    (item.name === PLANNED_OPERATIONS_ROUTE &&
+      (route.name === REGULAR_OPERATIONS_ROUTE || route.name === REGULAR_OPERATION_ROUTE))
+}
 
 /** Переходит на главную перед открытием её существующих окон. */
 async function requestHomeAction(action: 'operations' | 'import') {
@@ -92,7 +99,7 @@ onBeforeUnmount(() => {
           :key="item.label"
           :to="{ name: item.name, hash: item.hash }"
           :aria-current="
-            route.name === item.name && route.hash === item.hash
+            menuActive(item)
               ? item.hash
                 ? 'location'
                 : 'page'
@@ -101,7 +108,7 @@ onBeforeUnmount(() => {
           class="flex min-h-11 items-center rounded px-3 text-sm lg:px-6"
           :class="[
             focusStyle,
-            route.name === item.name && route.hash === item.hash
+            menuActive(item)
               ? 'bg-action font-bold text-action-foreground'
               : 'text-ink-secondary hover:bg-surface-muted',
           ]"
