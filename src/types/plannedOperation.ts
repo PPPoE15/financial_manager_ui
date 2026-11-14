@@ -32,6 +32,7 @@ export interface PlannedOperationList {
 export interface PlanFilters {
   transaction_type?: TransactionType
   include_completed: boolean
+  include_regular?: boolean
 }
 export interface PlanCreate {
   planned_date: string

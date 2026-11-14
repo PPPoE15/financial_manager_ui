@@ -97,7 +97,7 @@ it('запрашивает только четыре ближайших невы
   const controller = new AbortController()
   const result = await loadUpcomingPlans(controller.signal)
   expect(get).toHaveBeenCalledExactlyOnceWith('/planned-operations', {
-    params: { include_completed: false, limit: 4, skip: 0 },
+    params: { include_completed: false, include_regular: true, limit: 4, skip: 0 },
     signal: controller.signal,
   })
   expect(result.next_skip).toBe(4)

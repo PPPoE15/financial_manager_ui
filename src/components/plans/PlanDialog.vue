@@ -4,12 +4,17 @@ import BaseButton from '@/components/ui/BaseButton.vue'
 import ErrorMessage from '@/components/ui/ErrorMessage.vue'
 import PlanFields from './PlanFields.vue'
 import { usePlanAction, type PlanAction } from '@/plans/usePlanAction'
-import { formatPlanDate } from '@/plans/model'
+import { REGULAR_OPERATION_ROUTE } from '@/router/names'
+import { formatPlanDate, type PlanDraft } from '@/plans/model'
 import type { PlannedOperation } from '@/types/plannedOperation'
 const props = defineProps<{ mode: PlanAction; plan?: PlannedOperation; today: string }>()
 const emit = defineEmits<{
   close: []
   changed: []
+  repeat: [draft: PlanDraft]
+  openRegular: [
+    location: { name: typeof REGULAR_OPERATION_ROUTE; params: { operationUid: string } },
+  ]
   clone: [plan: PlannedOperation]
   remove: [plan: PlannedOperation]
   openTransaction: [plan: PlannedOperation]
@@ -48,6 +53,19 @@ const showDetails = computed(
   /** Не превращает окно удаления выполненного плана в карточку просмотра. */ () =>
     completed.value && props.mode !== 'delete',
 )
+const recurrence = computed(
+  /** Читает связь из актуального ответа, если он уже получен. */ () =>
+    (current.value ?? props.plan)?.recurrence,
+)
+const regularLocation = computed(
+  /** Даёт ссылку только на доступную регулярную операцию. */ () =>
+    recurrence.value && recurrence.value.operation_status !== 'deleted'
+      ? {
+          name: REGULAR_OPERATION_ROUTE as typeof REGULAR_OPERATION_ROUTE,
+          params: { operationUid: recurrence.value.operation_uid },
+        }
+      : null,
+)
 const title = computed(
   /** Подбирает нейтральный заголовок текущего действия. */ () =>
     showDetails.value
@@ -56,7 +74,7 @@ const title = computed(
           create: 'Запланировать операцию',
           confirm: 'Подтвердить',
           reschedule: 'Перенести операцию',
-          delete: 'Удалить план?',
+          delete: recurrence.value ? 'Удалить этот платёж?' : 'Удалить план?',
           details: 'Выполненный план',
         }[props.mode],
 )
@@ -66,7 +84,7 @@ const actionLabel = computed(
       create: unknown.value ? 'Создать ещё раз' : 'Запланировать',
       confirm: 'Подтвердить',
       reschedule: 'Перенести',
-      delete: 'Удалить план',
+      delete: recurrence.value ? 'Удалить платёж' : 'Удалить план',
       details: 'Закрыть',
     })[props.mode],
 )
@@ -115,8 +133,11 @@ async function openTransaction() {
   busy.value = true
   try {
     await loadFact()
-    if (active && transaction.value && current.value && !factError.value) emit('openTransaction', current.value)
-  } finally { busy.value = false }
+    if (active && transaction.value && current.value && !factError.value)
+      emit('openTransaction', current.value)
+  } finally {
+    busy.value = false
+  }
 }
 /** Отправляет действие, обновляет список и переводит фокус к ошибочному полю. */
 async function save() {
@@ -165,7 +186,7 @@ onBeforeUnmount(
 <template>
   <Teleport to="body">
     <div
-      class="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-dialog-backdrop/70 p-3 font-sans text-ink sm:p-8"
+      class="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-dialog-backdrop/70 backdrop-blur-sm p-3 font-sans text-ink sm:p-8"
     >
       <section
         ref="panel"
@@ -255,7 +276,8 @@ onBeforeUnmount(
                   v-if="transaction && !factError"
                   type="button"
                   class="mt-5 text-left text-sm text-ink-secondary underline focus-visible:outline"
-                  :disabled="busy" @click="openTransaction"
+                  :disabled="busy"
+                  @click="openTransaction"
                 >
                   Открыть фактическую операцию ↗
                 </button>
@@ -267,7 +289,8 @@ onBeforeUnmount(
             <footer class="mt-6 flex flex-wrap gap-3">
               <BaseButton variant="secondary" :disabled="busy" @click="emit('remove', current)"
                 >Удалить план</BaseButton
-              ><BaseButton :disabled="busy" @click="emit('clone', current)">Запланировать еще</BaseButton
+              ><BaseButton :disabled="busy" @click="emit('clone', current)"
+                >Запланировать еще</BaseButton
               ><BaseButton variant="secondary" @click="close">Закрыть</BaseButton>
             </footer>
           </div>
@@ -292,7 +315,31 @@ onBeforeUnmount(
               :actual="mode === 'confirm'"
               :only="mode === 'reschedule' ? 'date' : undefined"
             />
-            <p v-if="mode === 'delete'" class="my-8 text-sm">
+            <BaseButton
+              v-if="mode === 'create'"
+              variant="secondary"
+              class="mt-5 w-full"
+              :disabled="busy || unknown"
+              @click="emit('repeat', { ...draft })"
+              >Повторять ↗</BaseButton
+            >
+            <div v-if="mode === 'delete' && recurrence" class="my-8 space-y-4 text-sm">
+              <p>Будет удалён только выбранный платёж. Он больше не появится в серии.</p>
+              <p v-if="current?.status === 'completed'">Фактическая операция сохранится.</p>
+              <template v-if="regularLocation">
+                <p>Чтобы удалить всю серию, удалите регулярную операцию.</p>
+                <RouterLink :to="regularLocation" v-slot="{ href }" custom>
+                  <a
+                    :href="href"
+                    class="inline-block text-success hover:underline focus-visible:outline"
+                    :aria-disabled="busy"
+                    @click.prevent="!busy && emit('openRegular', regularLocation)"
+                    >Открыть регулярную операцию ↗</a
+                  >
+                </RouterLink>
+              </template>
+            </div>
+            <p v-else-if="mode === 'delete'" class="my-8 text-sm">
               {{ current?.status === 'completed' ? 'Фактическая операция сохранится. ' : '' }}Баланс
               не изменится.
             </p>
@@ -321,7 +368,13 @@ onBeforeUnmount(
                 >Использовать актуальную версию</BaseButton
               >
             </div>
-            <BaseButton v-if="needsDecision && !currentVerified && !unavailable" variant="secondary" class="mt-4" @click="reconcile">Повторить проверку плана</BaseButton>
+            <BaseButton
+              v-if="needsDecision && !currentVerified && !unavailable"
+              variant="secondary"
+              class="mt-4"
+              @click="reconcile"
+              >Повторить проверку плана</BaseButton
+            >
             <div v-if="unknown" class="mt-4 text-sm">
               <p>
                 {{

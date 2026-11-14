@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
-import { onBeforeRouteLeave } from 'vue-router'
-import { LOGIN_ROUTE } from '@/router/names'
+import { onBeforeRouteLeave, useRouter } from 'vue-router'
+import { LOGIN_ROUTE, REGULAR_OPERATIONS_ROUTE, REGULAR_OPERATION_ROUTE } from '@/router/names'
 import { usePlans } from '@/plans/usePlans'
 import { draftFromPlan, formatPlanDate, type PlanDraft } from '@/plans/model'
 import type { PlanAction } from '@/plans/usePlanAction'
@@ -13,6 +13,9 @@ import BaseButton from '@/components/ui/BaseButton.vue'
 import ErrorMessage from '@/components/ui/ErrorMessage.vue'
 import PlanFields from '@/components/plans/PlanFields.vue'
 import PlanningHeader from '@/components/plans/PlanningHeader.vue'
+import { openRegularCreation } from '@/regularOperations/navigation'
+import type { RegularEntry } from '@/regularOperations/model'
+import RegularPlanBadge from '@/components/plans/RegularPlanBadge.vue'
 import PlanDialog from '@/components/plans/PlanDialog.vue'
 import TransactionListDialog from '@/components/transactions/TransactionListDialog.vue'
 const {
@@ -34,6 +37,8 @@ const {
   dispose,
   retryReconcile,
 } = usePlans()
+const router = useRouter()
+const planningNavigation = ref(false)
 const categories = ref<Category[]>([])
 const categoryError = ref('')
 const activeFields = ref<Record<string, keyof PlanDraft>>({})
@@ -134,6 +139,34 @@ async function toggleCompleted(event: Event) {
   filters.value.include_completed = (event.target as HTMLInputElement).checked
   await load()
 }
+/** Переключает фильтр регулярных платежей с сохранением остальных фильтров. */
+async function toggleRegular(event: Event) {
+  filters.value.include_regular = (event.target as HTMLInputElement).checked
+  await load()
+}
+
+/** Открывает форму с черновиком или снимком исходного плана. */
+async function repeat(entry: RegularEntry) {
+  if (dirty.value || saving.value || planningNavigation.value) return
+  menuUid.value = null
+  planningNavigation.value = true
+  try {
+    await openRegularCreation(router, entry)
+  } finally {
+    planningNavigation.value = false
+  }
+}
+
+/** Переходит из подтверждения удаления к настройкам серии. */
+async function openRegular(location: { name: string; params: { operationUid: string } }) {
+  if (planningNavigation.value) return
+  planningNavigation.value = true
+  try {
+    await router.push(location)
+  } finally {
+    planningNavigation.value = false
+  }
+}
 /** Открывает действие после закрытия предыдущего окна, сохраняя фокус Teleport. */
 async function open(mode: PlanAction, plan?: PlannedOperation) {
   menuUid.value = null
@@ -166,6 +199,11 @@ function beforeUnload(event: BeforeUnloadEvent) {
 onBeforeRouteLeave(
   /** Не блокирует окончание сессии; защищает черновик при обычной навигации. */ (to) => {
     if (to.name === LOGIN_ROUTE) return true
+    if (
+      planningNavigation.value &&
+      (to.name === REGULAR_OPERATIONS_ROUTE || to.name === REGULAR_OPERATION_ROUTE)
+    )
+      return true
     if (dirty.value || saving.value || dialog.value) {
       leaveMessage.value = 'Сохраните или отмените изменения и закройте окно перед переходом.'
       return false
@@ -220,9 +258,20 @@ onBeforeUnmount(
             {{ option.label }}
           </button>
         </div>
-        <label class="order-3 flex min-h-11 items-center gap-2 text-sm sm:ml-auto"
+        <label class="order-3 flex min-h-11 items-center gap-2 text-sm">
+          <input
+            type="checkbox"
+            name="include-regular"
+            :checked="filters.include_regular"
+            :disabled="!!dirty || saving"
+            class="size-4"
+            @change="toggleRegular"
+          />Показать регулярные
+        </label>
+        <label class="order-3 flex min-h-11 items-center gap-2 text-sm"
           ><input
             type="checkbox"
+            name="include-completed"
             :checked="filters.include_completed"
             :disabled="!!dirty || saving"
             class="size-4"
@@ -290,15 +339,16 @@ onBeforeUnmount(
           :data-plan-uid="plan.uid"
           role="row"
           class="relative mb-3 grid min-w-0 grid-cols-2 gap-3 border-l-2 border-b border-b-field-border/20 p-3 xl:mb-0 xl:grid-cols-[minmax(110px,1fr)_80px_minmax(130px,1.3fr)_minmax(130px,1.3fr)_minmax(110px,1fr)_250px] xl:items-center"
-          :class="
+          :class="[
+            menuUid === plan.uid && 'z-20',
             plan.status === 'completed'
               ? 'border-l-transparent opacity-80'
               : plan.planned_date < today
                 ? 'border-l-warning bg-warning/10'
                 : plan.planned_date === today
                   ? 'border-l-action bg-action/10'
-                  : 'border-l-transparent bg-field/20'
-          "
+                  : 'border-l-transparent bg-field/20',
+          ]"
         >
           <div
             v-for="field in fields"
@@ -355,6 +405,10 @@ onBeforeUnmount(
                       : ''
               }}
             </p>
+            <RegularPlanBadge
+              v-if="field.key === 'category' && plan.recurrence"
+              :recurrence="plan.recurrence"
+            />
             <ErrorMessage
               v-if="activeFields[plan.uid] !== field.key"
               :message="drafts[plan.uid]?.errors[field.key]"
@@ -410,12 +464,21 @@ onBeforeUnmount(
                 class="absolute right-0 top-full z-10 min-w-36 rounded bg-field p-2 shadow-panel"
               >
                 <button
+                  v-if="!plan.recurrence"
+                  type="button"
+                  :disabled="saving || !!dirty || planningNavigation"
+                  class="min-h-11 w-full rounded px-2 text-left text-sm focus-visible:outline disabled:opacity-50"
+                  @click="repeat({ source: plan })"
+                >
+                  Сделать регулярным
+                </button>
+                <button
                   type="button"
                   :disabled="saving || !!dirty"
                   class="min-h-11 w-full rounded px-2 text-left text-sm text-danger focus-visible:outline disabled:opacity-50"
                   @click="open('delete', plan)"
                 >
-                  Удалить план
+                  {{ plan.recurrence ? 'Удалить платёж' : 'Удалить план' }}
                 </button>
               </div>
             </div>
@@ -468,6 +531,8 @@ onBeforeUnmount(
       :today="today"
       @close="dialog = null"
       @changed="load"
+      @repeat="repeat({ draft: $event })"
+      @open-regular="openRegular"
       @clone="open('create', $event)"
       @remove="open('delete', $event)"
       @open-transaction="openFact"
