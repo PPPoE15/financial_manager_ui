@@ -50,6 +50,16 @@ export function validateRegularDraft(
   originalDate?: string,
 ): RegularErrors {
   const errors: RegularErrors = validateDraft(draft, today, draft.date === originalDate)
+  if (
+    !errors.description &&
+    [...draft.description].some(
+      /** Проверяет допустимые управляющие символы. */ (character) => {
+        const code = character.charCodeAt(0)
+        return code === 127 || (code < 32 && ![9, 10, 13].includes(code))
+      },
+    )
+  )
+    errors.description = 'Укажите корректный комментарий'
   if (draft.end) {
     errors.end = validateDraft({ ...draft, date: draft.end }, today, true).date
     if (!errors.end && draft.end < draft.date)

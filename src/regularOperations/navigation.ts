@@ -1,18 +1,31 @@
+import type { Router } from 'vue-router'
 import { REGULAR_OPERATIONS_ROUTE } from '@/router/names'
 import type { RegularEntry } from './model'
 
-/** Передаёт черновик перехода в памяти, без пользовательских данных в адресе. */
-let pending: RegularEntry | undefined
+let pending: { key: number; entry: RegularEntry } | undefined
+let sequence = 0
 
-/** Подготавливает открытие формы на вкладке регулярных операций. */
-export function regularCreationLocation(entry: RegularEntry) {
-  pending = entry
-  return { name: REGULAR_OPERATIONS_ROUTE }
+/** Открывает вкладку с черновиком, привязанным только к этому переходу. */
+export async function openRegularCreation(router: Router, entry: RegularEntry) {
+  const key = ++sequence
+  pending = { key, entry }
+  try {
+    const failure = await router.push({
+      name: REGULAR_OPERATIONS_ROUTE,
+      state: { regularEntryKey: key },
+    })
+    if (!failure && router.currentRoute.value.name === REGULAR_OPERATIONS_ROUTE) return
+    return failure
+  } finally {
+    if (pending?.key === key && router.options.history.state.regularEntryKey !== key)
+      pending = undefined
+  }
 }
 
-/** Получает черновик при входе на вкладку и освобождает его. */
-export function takeRegularEntry() {
-  const entry = pending
+/** Забирает черновик только для связанной записи истории. */
+export function takeRegularEntry(router: Router) {
+  if (!pending || pending.key !== router.options.history.state.regularEntryKey) return
+  const entry = pending.entry
   pending = undefined
   return entry
 }

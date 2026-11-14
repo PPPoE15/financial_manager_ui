@@ -24,21 +24,31 @@ import {
   type RegularErrors,
 } from '@/regularOperations/model'
 import type { Category } from '@/types/category'
-import type { RegularOperation } from '@/types/regularOperation'
+import type { PlannedOperation } from '@/types/plannedOperation'
+import type { RegularOperation, RegularOperationItem } from '@/types/regularOperation'
 
 const props = defineProps<{
   mode: 'create' | 'edit' | 'delete'
   today: string
   operation?: RegularOperation
   detailError: boolean
+  calendarError: boolean
   entry?: RegularEntry
 }>()
-const emit = defineEmits<{ close: []; changed: []; retryDetail: []; busy: [value: boolean] }>()
+const emit = defineEmits<{
+  close: []
+  changed: []
+  retryDetail: []
+  retryCalendar: []
+  busy: [value: boolean]
+}>()
 const id = useId()
 const panel = ref<HTMLDialogElement>()
-const source = props.entry && 'source' in props.entry ? props.entry.source : undefined
+const source = ref(props.entry && 'source' in props.entry ? props.entry.source : undefined)
 const current = ref(props.operation)
-const draft = ref(regularDraft(props.today || source?.today || '', props.entry, current.value))
+const draft = ref(
+  regularDraft(props.today || source.value?.today || '', props.entry, current.value),
+)
 const categories = ref<Category[]>([])
 const loadingCategories = ref(props.mode !== 'delete')
 const categoryError = ref(false)
@@ -49,9 +59,11 @@ const needsCheck = ref(false)
 const reconciled = ref(false)
 const latest = ref<RegularOperation>()
 const unavailable = ref(false)
+const checkedRows = ref<RegularOperationItem[]>([])
+const latestSource = ref<PlannedOperation>()
 const calendar = computed(
   /** Использует дату сервера, включая прямой переход. */ () =>
-    [props.today, current.value?.today ?? '', source?.today ?? ''].sort().pop() ?? '',
+    [props.today, current.value?.today ?? '', source.value?.today ?? ''].sort().pop() ?? '',
 )
 const title = {
   create: 'Создать регулярную операцию',
@@ -60,7 +72,7 @@ const title = {
 }[props.mode]
 const availableCategories = computed(
   /** Сохраняет тип исходного плана или операции. */ () => {
-    const type = current.value?.transaction_type ?? source?.transaction_type
+    const type = current.value?.transaction_type ?? source.value?.transaction_type
     return type
       ? categories.value.filter(
           /** Выбирает категории того же типа. */ (category) => category.category_type === type,
@@ -88,8 +100,8 @@ watch(
     if (!previous && !props.entry && props.mode === 'create' && !draft.value.date)
       draft.value.date = today
     if (
-      source?.status === 'pending' &&
-      draft.value.date === source.planned_date &&
+      source.value?.status === 'pending' &&
+      draft.value.date === source.value.planned_date &&
       draft.value.date < today
     )
       draft.value.date = ''
@@ -135,13 +147,14 @@ function inputAmount(event: Event) {
 async function reconcile() {
   const operation = current.value
   const [seriesResult, plansResult, sourceResult, operationResult] = await Promise.allSettled([
-    loadRegularOperations(source?.uid),
-    operation || source ? loadPlans({ include_completed: false }) : undefined,
-    source ? readPlan(source.uid) : undefined,
+    loadRegularOperations(source.value?.uid),
+    operation || source.value ? loadPlans({ include_completed: false }) : undefined,
+    source.value ? readPlan(source.value.uid) : undefined,
     operation ? readRegularOperation(operation.uid) : undefined,
   ] as const)
   latest.value = operationResult.status === 'fulfilled' ? operationResult.value : undefined
-  const refreshedSource = sourceResult.status === 'fulfilled' ? sourceResult.value : undefined
+  latestSource.value = sourceResult.status === 'fulfilled' ? sourceResult.value : undefined
+  checkedRows.value = seriesResult.status === 'fulfilled' ? seriesResult.value.content : []
   unavailable.value =
     (operationResult.status === 'rejected' &&
       isAxiosError(operationResult.reason) &&
@@ -149,12 +162,8 @@ async function reconcile() {
     (sourceResult.status === 'rejected' &&
       isAxiosError(sourceResult.reason) &&
       sourceResult.reason.response?.status === 404) ||
-    !!(
-      source &&
-      refreshedSource &&
-      (refreshedSource.version !== source.version || refreshedSource.status !== source.status)
-    ) ||
-    !!(source && seriesResult.status === 'fulfilled' && seriesResult.value.content.length)
+    !!latestSource.value?.recurrence ||
+    !!(source.value && checkedRows.value.length)
   reconciled.value =
     seriesResult.status === 'fulfilled' &&
     plansResult.status === 'fulfilled' &&
@@ -186,6 +195,22 @@ function acceptLatest() {
     }
     current.value = latest.value
     draft.value = actual
+  }
+  if (source.value && latestSource.value) {
+    const previous = regularDraft(calendar.value, { source: source.value })
+    const actual = regularDraft(calendar.value, { source: latestSource.value })
+    const changedDate = previous.date !== draft.value.date
+    const fields = ['amount', 'category', 'description'] as const
+    for (const field of fields) {
+      if (draft.value[field] === previous[field]) draft.value[field] = actual[field]
+    }
+    if (
+      !changedDate ||
+      (source.value.status !== 'completed' && latestSource.value.status === 'completed')
+    )
+      draft.value.date = actual.date
+    source.value = latestSource.value
+    latestSource.value = undefined
   }
   needsCheck.value = false
   latest.value = undefined
@@ -221,7 +246,7 @@ async function submit() {
           ...changes,
           expected_version: operation.version,
         })
-    } else if (source) await convertPlan(source, regularPayload(draft.value))
+    } else if (source.value) await convertPlan(source.value, regularPayload(draft.value))
     else await createRegularOperation(regularPayload(draft.value))
     emit('changed')
     emit('close')
@@ -241,6 +266,7 @@ async function submit() {
         : new Set()
       if (fields.has('category_uid')) errors.value.category = 'Выберите доступную категорию'
       if (fields.has('first_date')) errors.value.date = 'Выберите сегодня или будущую дату'
+      if (fields.has('description')) errors.value.description = 'Укажите корректный комментарий'
       if (fields.has('end_date')) errors.value.end = 'Укажите корректную дату окончания'
     }
     const code = isAxiosError(error) ? error.response?.data?.code : undefined
@@ -304,6 +330,11 @@ async function submit() {
           >
             План просрочен. Выберите новую дату первого платежа.
           </p>
+          <div v-if="calendarError && !calendar" class="mb-4">
+            <ErrorMessage message="Не удалось загрузить регулярные операции" />
+            <BaseButton @click="emit('retryCalendar')">Повторить</BaseButton>
+          </div>
+          <p v-else-if="!calendar" role="status" class="mb-4">Загрузка...</p>
           <p v-if="loadingCategories" role="status">Загрузка...</p>
           <div v-else-if="categoryError" class="mb-4">
             <ErrorMessage message="Не удалось загрузить категории" />
@@ -424,8 +455,30 @@ async function submit() {
               {{ latest.end_date ? formatPlanDate(latest.end_date) : 'Без окончания' }} ·
               {{ latest.description || '—' }}
             </p>
+            <p v-if="latestSource">
+              Исходный план: {{ latestSource.category.name }} · {{ latestSource.money_sum }} ₽ ·
+              {{ formatPlanDate(latestSource.planned_date) }} ·
+              {{ latestSource.description || '—' }} ·
+              {{ latestSource.status === 'completed' ? 'Выполнен' : 'Не выполнен' }}
+            </p>
+            <div v-if="!current && !source" class="space-y-2">
+              <p class="font-bold">Актуальный список регулярных операций</p>
+              <ul
+                v-if="checkedRows.length"
+                class="max-h-48 list-disc overflow-auto pl-5"
+                tabindex="0"
+              >
+                <li v-for="row in checkedRows" :key="row.uid" class="break-words">
+                  {{ row.category.name }} · {{ row.money_sum }} ₽ ·
+                  {{ frequencies[row.frequency] }} · {{ formatPlanDate(row.first_date) }} —
+                  {{ row.end_date ? formatPlanDate(row.end_date) : 'Без окончания' }} ·
+                  {{ row.description || '—' }}
+                </li>
+              </ul>
+              <p v-else>Регулярных операций пока нет</p>
+            </div>
             <BaseButton variant="secondary" :disabled="busy" @click="acceptLatest">{{
-              latest ? 'Использовать актуальные данные' : 'Подтвердить сверку'
+              latest || latestSource ? 'Использовать актуальные данные' : 'Подтвердить сверку'
             }}</BaseButton>
           </template>
           <BaseButton v-else variant="secondary" :disabled="busy" @click="retryCheck"

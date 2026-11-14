@@ -102,7 +102,7 @@ watch(
 )
 onMounted(
   /** Загружает список и открывает форму с переданным черновиком. */ () => {
-    entry.value = takeRegularEntry()
+    entry.value = takeRegularEntry(router)
     if (entry.value && route.name === REGULAR_OPERATIONS_ROUTE) openCreate()
     void load()
   },
@@ -202,9 +202,11 @@ onBeforeUnmount(
       :today="today"
       :operation="detail"
       :detail-error="detailError"
+      :calendar-error="failed && !today"
       :entry="entry"
       @close="close"
       @changed="load"
+      @retry-calendar="load"
       @busy="mutating = $event"
       @retry-detail="openDetail(String(route.params.operationUid))"
     />

@@ -1,11 +1,13 @@
+import { AxiosError } from 'axios'
 import { flushPromises, mount, DOMWrapper } from '@vue/test-utils'
-import { createMemoryHistory, createRouter } from 'vue-router'
+import { createWebHistory, createRouter } from 'vue-router'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import * as api from '@/api/regularOperations'
 import { listCategories } from '@/api/categories'
 import * as planApi from '@/api/plannedOperations'
+import type { RegularEntry } from '@/regularOperations/model'
 import { plan } from '@/plans/__tests__/fixtures'
-import { regularCreationLocation } from '@/regularOperations/navigation'
+import { openRegularCreation } from '@/regularOperations/navigation'
 import type { RegularOperation, RegularOperationList } from '@/types/regularOperation'
 import RegularOperationsView from '../RegularOperationsView.vue'
 
@@ -45,9 +47,9 @@ const page: RegularOperationList = {
 }
 
 /** Запускает вкладку с настоящим маршрутом и модальным окном в body. */
-async function show(path: string | ReturnType<typeof regularCreationLocation> = '/regular') {
+async function show(path: string | RegularEntry = '/regular') {
   const router = createRouter({
-    history: createMemoryHistory(),
+    history: createWebHistory(),
     routes: [
       { path: '/', name: 'planned-operations', component: { template: '<div />' } },
       { path: '/regular', name: 'regular-operations', component: RegularOperationsView },
@@ -58,7 +60,11 @@ async function show(path: string | ReturnType<typeof regularCreationLocation> = 
       },
     ],
   })
-  await router.push(path)
+  if (typeof path === 'string') await router.push(path)
+  else {
+    await router.push('/')
+    await openRegularCreation(router, path)
+  }
   const wrapper = mount({ template: '<router-view />' }, { global: { plugins: [router] } })
   await flushPromises()
   return wrapper
@@ -121,11 +127,9 @@ describe('Регулярные операции', /** Проверяет дей�
 
   it('переносит черновик и отклоняет минус, не повторяя POST после сбоя', /** Проверяет неизменность черновика и единственный запрос создания. */ async () => {
     vi.mocked(api.createRegularOperation).mockRejectedValue(new Error('network'))
-    const wrapper = await show(
-      regularCreationLocation({
-        draft: { date: today, amount: '42', category: 'c', description: 'Черновик' },
-      }),
-    )
+    const wrapper = await show({
+      draft: { date: today, amount: '42', category: 'c', description: 'Черновик' },
+    })
     const amount = dialog().get<HTMLInputElement>('input[inputmode=numeric]')
     expect(amount.element.value).toBe('42')
     await amount.setValue('-8')
@@ -137,12 +141,13 @@ describe('Регулярные операции', /** Проверяет дей�
     )
     expect(api.loadRegularOperations).toHaveBeenCalledTimes(3)
     expect(dialog().text()).toContain('Не удалось создать регулярную операцию')
+    expect(dialog().text()).toContain('Актуальный список регулярных операций')
     wrapper.unmount()
   })
 
   it('требует выбрать первую дату заново для выполненного плана', /** Не отправляет преобразование с датой источника. */ async () => {
     const source = plan('p', { status: 'completed', planned_date: today })
-    const wrapper = await show(regularCreationLocation({ source }))
+    const wrapper = await show({ source })
     expect(dialog().get<HTMLInputElement>('input[type=date]').element.value).toBe('')
     await dialog().get('form').trigger('submit')
     expect(api.convertPlan).not.toHaveBeenCalled()
@@ -152,6 +157,49 @@ describe('Регулярные операции', /** Проверяет дей�
       source,
       expect.objectContaining({ first_date: today }),
     )
+    wrapper.unmount()
+  })
+
+  it('принимает новую версию исходного плана только после сверки', /** Проверяет сохранённый черновик и явный повтор преобразования. */ async () => {
+    const source = plan('p', { planned_date: today, version: 1 })
+    const updated = { ...source, version: 2, money_sum: 123 }
+    vi.mocked(planApi.readPlan).mockResolvedValue(updated)
+    vi.mocked(api.loadRegularOperations).mockResolvedValue({ ...page, content: [], total: 0 })
+    const conflict = new AxiosError('Conflict')
+    conflict.response = { status: 409 } as NonNullable<AxiosError['response']>
+    vi.mocked(api.convertPlan).mockRejectedValueOnce(conflict).mockResolvedValueOnce(operation)
+    const wrapper = await show({ source })
+    await dialog().get('form').trigger('submit')
+    await flushPromises()
+    expect(dialog().text()).toContain('123 ₽')
+    expect(api.convertPlan).toHaveBeenCalledTimes(1)
+    const button = dialog()
+      .findAll('button')
+      .find(
+        /** Находит подтверждение актуального снимка. */ (item) =>
+          item.text() === 'Использовать актуальные данные',
+      )
+    await button!.trigger('click')
+    await dialog().get('form').trigger('submit')
+    expect(api.convertPlan).toHaveBeenLastCalledWith(
+      updated,
+      expect.objectContaining({ money_sum: 123 }),
+    )
+    wrapper.unmount()
+  })
+
+  it('повторяет загрузку календаря из формы, сохраняя черновик', /** Не блокирует предзаполненную форму после ошибки списка. */ async () => {
+    vi.mocked(api.loadRegularOperations).mockRejectedValueOnce(new Error('network'))
+    const wrapper = await show({
+      draft: { date: today, amount: '42', category: 'c', description: 'Черновик' },
+    })
+    const retry = dialog()
+      .findAll('button')
+      .find(/** Находит действие повторной загрузки. */ (button) => button.text() === 'Повторить')
+    await retry!.trigger('click')
+    await flushPromises()
+    expect(dialog().get<HTMLInputElement>('input[inputmode=numeric]').element.value).toBe('42')
+    expect(dialog().get('button[type=submit]').attributes('disabled')).toBeUndefined()
     wrapper.unmount()
   })
 
