@@ -5,56 +5,199 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Commands
 
 ```sh
-npm install       # install dependencies
-npm run dev       # start Vite dev server with HMR
-npm run build     # type-check (vue-tsc --build) then production build to dist/
+npm install        # install dependencies
+npm run dev        # start Vite dev server with HMR
+npm run build      # type-check (vue-tsc --build) then production build to dist/
 npm run type-check # vue-tsc --build only
-npm run preview   # preview the production build locally
-npm run lint      # eslint . --fix
-npm run format    # prettier --write src/
+npm run test       # Vitest (jsdom), single run; `npm run test:watch` for watch mode,
+                   # `npm run test:coverage` for a v8 coverage report
+npm run preview    # preview the production build locally
+npm run lint       # eslint . --fix  (CI runs `npx eslint .` without --fix)
+npm run format     # prettier --write src/
 ```
 
-There is no test runner configured in this project (no test script, no test files).
+CI/CD (`.github/workflows/ci.yml`): `npm ci` → `npx eslint .` → `npm run build` → `npm run test`
+→ `publish` (only a successful push to `dev`/`master`). PRs run checks only.
+Publication and immutable deployment references are documented in `docs/ci-cd.md`.
 
 Docker/deploy:
 ```sh
 make build_dev    # docker build -t pppoe15/fm-ui:dev .
-make push_dev      # docker login && docker push pppoe15/fm-ui:dev
+make push_dev     # docker login && docker push pppoe15/fm-ui:dev
 ```
-The Dockerfile does a multi-stage build (`npm run build` → static files served by nginx using `nginx/nginx.conf`).
+The Dockerfile does a multi-stage build (`npm run build` → static files served by nginx using
+`nginx/nginx.conf`). nginx listens on 443 with certs mounted at `/etc/nginx/ssl`, proxies `/auth/`
+and `/transaction/` to the backend containers with the path unchanged (both services mount their API under
+their own prefix) and falls back to `index.html` for SPA routes.
+Missing files under `/assets/` return 404 (not `index.html`), so a stale lazy chunk fails cleanly.
+Vite `base` must stay `/` (relative base breaks assets on nested-route reloads).
+
+Node: `^22.22.2 || ^24.15.0 || >=26` (jsdom/vitest requirements); the Docker builder uses
+`node:22.22.2-alpine`. In `npm run dev` without `VITE_API_URL`/`VITE_AUTH_API_URL`, Vite proxies
+`/transaction/` → `localhost:8083` and `/auth/` → `localhost:8082` (ports from the fm_devops compose),
+keeping the path like nginx does. When pointing the env vars at a backend directly, include the prefix
+(`http://localhost:8083/transaction`, `http://localhost:8082/auth`).
 
 ## Architecture
 
-This is a Vue 3 + TypeScript + Vite SPA (financial manager / "Финансовый менеджер") for tracking income/outcome transactions against user-defined categories, talking to a separate backend over two API roots.
+Vue 3 + TypeScript + Vite SPA («Финансовый менеджер»), Pinia, Vue Router, Tailwind 3, Vitest +
+`@vue/test-utils`. All components use `<script setup lang="ts">`. Path alias `@` → `src/`.
 
-**API layer (`src/api/`)**: thin axios wrapper functions, one file per endpoint (`login.ts`, `registration.ts`, `get_transactions.ts`, `create_transactions.ts`, `get_categories.ts`). Base URLs come from `src/api/constants.ts`:
-- `TRANSACTION_API_URL` — `VITE_API_URL` env var, defaults to `/transaction`
-- `AUTH_API_URL` — `VITE_AUTH_API_URL` env var, defaults to `/auth`
-
-Auth is a bearer JWT stored in `localStorage` under `authToken`, set by `loginUser()` in `login.ts` and manually attached as an `Authorization: Bearer ...` header in every authenticated request (no shared axios instance/interceptor exists yet — each API function repeats this header).
-
-**Routing (`src/router/index.ts`)**: flat route table, no nested routes or route guards yet:
-- `/` → `HomePage` (login/registration tabs)
-- `/registration` → `RegistrationView`
-- `/transaction-list` → `TransactionsTabsView` (income/outcome tabs)
-- `/add-transaction` → `AddTransactionView`
-
-**View/component split**: `src/views/` holds routed page components; `src/components/` holds reusable pieces and some component-level "tabs" containers (`HomePage.vue` and `TransactionsTabsView.vue` both implement the same hand-rolled tab-switcher pattern via a local `activeTab` data property — follow that existing pattern if adding another tabbed view rather than introducing a new abstraction).
-
-**Mixed component style**: the codebase mixes Vue Options API (`<script lang="ts">` + `export default {...}`) and Composition API (`<script setup lang="ts">`) across sibling files with no consistent rule — check the file you're editing and match its existing style rather than converting it.
-
-**Data flow for transactions**: `TransactionsTabsView` → `TransactionsView` (fetches via `getTransactions`, `<script setup>` top-level `await`) → `TransactionTable` (generic column-driven table, also handles the "add new row" form using `DropDownList` for category selection and `createTransaction`). Table column definitions are plain `{ label, prop, type }` objects passed as props, not derived from the data type.
-
-**Known inconsistencies to be aware of** (don't silently "fix" these as drive-by changes unless asked):
-- `src/components/AddTransaction copy.vue` is a stale duplicate/leftover of `AddTransaction.vue` with divergent, non-functional code (calls `fetch()` against a placeholder URL) — likely dead code, not wired into the router.
-- `src/components/AddTransaction.vue` also uses a placeholder `fetch('https://your-api-url/transactions', ...)` instead of the real `src/api/create_transactions.ts` helper used elsewhere.
-- Transaction type values are inconsistent between `income`/`outcome` (used in `src/types/transaction.ts`, API calls, tabs) and `income`/`expense` (used in `AddTransaction.vue`'s select options).
-- Path alias `@` → `src/` is configured in both `vite.config.ts` and `tsconfig`; use it for imports instead of relative paths (existing code does this consistently).
+- **HTTP (`src/api/`)**: `http.ts` — `createHttpClient({ getToken, getRefreshToken, getGeneration, onRefreshed, onUnauthorized })`, one axios
+  instance for both backends. Base URL is chosen per request by the custom `api` config field:
+  `'transaction'` (default, `VITE_API_URL`, fallback `/transaction`) or `'auth'`
+  (`VITE_AUTH_API_URL`, fallback `/auth`), e.g. `http.post('/token', body, { api: 'auth' })`.
+  Adds `Authorization: Bearer <token>`; a 401 on an authenticated request refreshes the pair through
+  `POST /auth/token/refresh` and retries once. Concurrent and late 401s share the rotated pair.
+  Missing refresh, failed refresh (including network/5xx), or a second 401 calls `onUnauthorized`.
+  While logout is in progress, other 401s cannot start a refresh; logout alone may renew expired access.
+  Refresh and logout use the shared `fm-session` Web Lock across tabs. Each operation re-reads
+  the atomic `authSession` snapshot under the lock, so delayed storage events cannot cause duplicate
+  refreshes. Login commits under the same lock. Without Web Locks (HTTPS/localhost required), refresh
+  fails closed to login; logout still sends its token but cannot renew expired access.
+  The session generation prevents old refresh responses/401s from replacing or clearing a newer login. Requests made without a session (login, registration) pass `skipAuth: true`:
+  no token is attached even if a stale one is stored, and their 401 (wrong credentials) is left to
+  the caller. `client.ts` exports the app-wide `http` wired to the session store: failed renewal clears the
+  session and calls the handler set via `setSessionExpiredHandler` — `main.ts` sets it to
+  `redirectToLogin(router)`. `src/api/` must not import the router (guards in `src/router/guards.ts`
+  may call the API, which would create an import cycle). API functions should import `http` from
+  `@/api/client`.
+- **Session (`src/stores/session.ts`)**: Pinia setup store — `token` and `refreshToken` persisted atomically
+  in the `authSession` localStorage snapshot alongside a session id (unchanged on rotation).
+  Legacy `authToken` is read when the snapshot is absent; storage failures leave state in memory.
+  `storage` events and API boundaries synchronize state; external login/logout resets user data and
+  reloads the app to discard data of the previous session. Includes `user` (`User` from `GET /auth/me`), `isAuthenticated`, `setTokens` (new login), `rotateTokens` (same session), `setToken` (legacy access-only), `setUser`,
+  `clear` (removes both tokens).
+- **Router (`src/router/`)**: `createAppRouter(history, guards)`; route names are constants in
+  `src/router/names.ts` (`HOME_ROUTE`, `LOGIN_ROUTE`, `REGISTER_ROUTE`), re-exported from
+  `@/router` — guards import them from `names.ts` to avoid an import cycle. Global guards are
+  registered from the `guards` array in `src/router/guards.ts` — add access checks there.
+  `guestOnlyGuard` sends an authenticated user away from routes with `meta.guestOnly` (login,
+  registration) to home. `authGuard` protects every other route: without a token → `login` with
+  `?redirect=<fullPath>` (`useSignIn` returns there after login, only for in-app paths); with a token
+  and no loaded user it calls `GET /auth/me` (`getCurrentUser`) — a 401 clears the session and the
+  navigation goes to `login`, other errors let it through without a user. Protected routes are
+  children of the `/` route rendered inside `AppLayout`. `redirectToLogin(router)` navigates to
+  `login` unless already there.
+- **Base UI (`src/components/ui/`)**: `BaseInput` (label + input + error, `v-model`; `class`/`style`
+  go to the wrapper, other attrs to `<input>`), `BaseButton` (`variant` primary/secondary, `loading`/`disabled`, `type="button"` by
+  default), `ErrorMessage` (`role="alert"`, renders nothing for empty message).
+- **Auth (`src/auth/`, `src/api/auth.ts`, `src/components/auth/`)**: `api/auth.ts` — `login`
+  (`POST /auth/token`) and `register` (`POST /auth/registration`, `{email, password,
+  password_confirmation}` — no name, the mockup has no such field), both with `skipAuth`;
+  `getCurrentUser` (`GET /auth/me`) and `updateCurrentUser` (`PATCH /auth/me`). `User.name` is
+  `string | null`: `null` until the user fills in the «Первый шаг» window.
+  `auth/validation.ts` — client-side checks mirroring `contracts/auth.openapi.yaml`;
+  `auth/errors.ts` — `mapAuthError` turns a backend error into a form-level `message` and/or
+  per-field `fields` (422 messages from pydantic are English, so field texts are our own);
+  `auth/useSignIn.ts` — login → `session.setTokens` → `redirect` from the query (in-app paths only) or home. `LoginForm`/`RegistrationForm` share
+  `AuthFormLayout` (form-level error above the submit button, `novalidate`, button `loading` while
+  the request is in flight — repeated submits are ignored). Registration signs in right after.
+- **Views (`src/views/`)**: routed pages. `LoginView` serves both `/login` and `/register` (mode
+  from the route name, tabs are `RouterLink`s) per «Новый дизайн», frames 214:518 / 220:24 (FM-56).
+  Desktop: landscape/brand panel on the left, 495px form on the right; below `lg` a compact logo
+  replaces the panel. Layout references, adaptations and screenshots: `docs/auth-design.md`. `HomeView` is
+  the «Обзор» screen: greeting «Добрый день, <name>» («Добрый день» without a comma while `name` is
+  `null`), the budget-structure card (other Frame 8 cards come with FM-2+) and `FirstStepDialog`.
+- **«Первый шаг» (`src/firstStep/`, `src/api/balance.ts`, `src/components/firstStep/`)**: mandatory
+  window over the home screen per the «Приветствие» mockup (section «Новый дизайн», node `220:81`;
+  current theme colours — the new design is not applied yet). `api/balance.ts` —
+  `getStartingBalance` / `createStartingBalance` (`GET`/`POST /transaction/starting-balance`, POST
+  sends only `amount`; the server sets the date to yesterday). `useFirstStep` shows the window when
+  `user.name === null` (block «Как Вас зовут?» → `PATCH /auth/me`) and/or the starting balance GET
+  returned 404 `FM-404201` (block «Ваш текущий бюджет?» → `POST`); only the missing blocks are
+  rendered. «Приступим» sends both requests in parallel; a saved block disappears (partial success
+  leaves only the unsaved one), 409 `FM-409201` counts the balance block as done, 422 goes to the
+  field, other errors to a message in the window. If the balance check fails (network/5xx) the
+  balance block is not shown. `validation.ts` — `validateName` (1–64 chars after trim, no control
+  characters) and `parseAmount` (integer −1e9…1e9, spaces as separators, `-` or `−`). The dialog is
+  teleported to `body`, sets `inert` on `#app` while open, keeps Tab inside and ignores Escape.
+- **Budget structure (`src/budget/`, `src/api/budget.ts`, `src/components/budget/`)**:
+  `getBudgetStructure(year, categoryType)` → `GET /transaction/budget-structure`.
+  `useBudgetStructure` holds `year` (default current, clamped to 2000–2099) and `categoryType`
+  (default `outcome`), refetches on change and drops responses/errors of superseded requests.
+  `BudgetStructureCard` (header, «Расходы / Доходы» toggle, year arrows, loading / error with
+  «Повторить» / empty states — none of these are in the mockup, agreed in FM-28) wraps
+  `BudgetStructureTable`: scrolled inside the card, 250–500px tall (half / full mockup height, FM-43):
+  months scroll horizontally under the pinned «Категория» (always) and «План» / «Среднее» (768–1023px
+  and from 1140px, where months keep more than one column; breakpoints, widths and z-index layers in `columns.ts`),
+  articles scroll vertically under the bold «Сумма» row stuck to the bottom. Category names over 20
+  characters are cut with «…» (full name in `title` and sr-only). `null` amounts render as a pale «—» with an sr-only reason (план не задан /
+  нет завершённых месяцев / месяц ещё не наступил), `0` as «0 ₽». The plan/fact colouring from the
+  mockup is not implemented yet (TODO in the table).
+- **Categories (`src/categories/`, `src/api/categories.ts`, `src/components/categories/`)**: window
+  «Редактирование категорий» per the mockup (section «Новый дизайн», frame `234:734`, window `234:954`;
+  current theme colours), opened by «Редактировать категории» in `BudgetStructureCard`, which reloads the
+  table on `saved` (at least one category created or changed). `api/categories.ts` — `listCategories(type)`
+  (`GET /transaction/categories`, limit 100 = the per-user limit), `createCategory` (`POST`) and
+  `updateCategory(uid, body)` (`PATCH`, only the changed fields). `useCategoryEditor` holds both columns:
+  existing categories (`CategoryRow`: editable fields plus the saved `category`; the plan is shown grouped,
+  «4 990») and rows for new ones — a new empty row appears as soon as the last one is touched. Both kinds
+  render as `CategoryRow.vue` (three inputs, `data-testid` `category-row` / `new-row`); the category type is
+  never changed (columns are fixed). «Сохранить» validates (`categories/validation.ts`, same rules as the
+  contract; a name already taken in the column is «Такая статья уже есть» on the later claimant — first
+  categories keeping their name (even with a changed plan/comment), then new rows, then renamed categories;
+  a name swap A ↔ B is refused, the server's unique name can't pass it in one save). Then it sends in
+  parallel one `PATCH` per changed category (rows matching the saved values are skipped; cleared
+  plan/comment → `null`) and one `POST` per filled new row. A request for a name that another rename in the
+  same save frees waits for that `PATCH`: on its 409/422 the waiting row gets «Такая статья уже есть», on
+  network/5xx it is not sent (window message only), on 404 (category gone, name free) it is sent. Saved
+  categories take the server's values, created rows move into the list, failed rows keep their input and
+  error (`FM-409101` duplicate, `FM-409103` limit, 404 «статья удалена», 422 by field), network/5xx go to a
+  window message; the window closes only when every row was saved, with nothing to save it closes without
+  requests. Rows are window data: `CategoryRow` emits `update`, the dialog writes it. Height (FM-44): from
+  540px of viewport height the window is capped at the viewport (mockup 672px as the minimum when it fits)
+  and only the columns scroll between the fixed header and «Сохранить»; below 540px it grows and scrolls
+  with the backdrop. It is centred with `my-auto`, not `items-center`, so a tall window keeps its top
+  reachable. After a failed save focus goes to the first row with an error (existing or new; its invalid
+  field, or first field for a row-level error) scrolled into view, or to «Сохранить» for a general error.
+  Tests mount the dialog with a real Teleport (the teleport stub re-creates the window markup on updates,
+  detaching elements found earlier).
+- **Transaction entry (`src/transactions/useTransactionEntry.ts`, `TransactionEntryDialog`)**: FM-51,
+  opened by either recent-card `add(type)` event in HomeView. Loads categories of that type, keeps a
+  trailing empty row, validates before POST, combines the selected date with current local time.
+  Saved rows disappear; failed rows retain input and their error. The `saved` event reloads both recent
+  cards and the budget table even after partial success. `editCategories` first unmounts the entry
+  dialog, then opens the budget card's editor. Figma/PDF references and agreed states: `docs/transaction-entry.md`.
+- **Money (`src/utils/money.ts`)**: `formatMoney(value)` — app-wide ₽ formatter for integer roubles:
+  `10 000 ₽` with NBSP grouping (also for 4-digit numbers, unlike `Intl` ru-RU), `−` for negatives,
+  `null` → `MISSING_VALUE` («—»).
+- **Shell (`src/components/layout/AppLayout.vue`)**: Figma Frame 8 sidebar — logo, menu (only
+  «Обзор» so far), user block (initial instead of the mockup's photo — the API has no avatar) and
+  the «Выход» button (`auth/useSignOut.ts`: waits for pending refresh → `POST /auth/logout` with the current refresh (also on retry) → clears both tokens even on error → `login`). No narrow mockup: below
+  `lg` the sidebar becomes a top bar without the menu.
+- Tests live next to code in `__tests__/*.spec.ts` (type-checked via `tsconfig.vitest.json`).
 
 ## Styling
 
-Tailwind CSS is configured (`tailwind.config.js`, `postcss.config.js`) but much of the UI still uses scoped `<style>` blocks with hardcoded hex colors (`#d4d1fe`, `#583f9b`, `#35354f`) rather than Tailwind utility classes — both approaches currently coexist.
+Layout comes from the Figma file `FAPPJ3LrAUEY8indrAbfnV`, section «Финансовый менеджер. Разработка»
+(node `136:10`). The Tailwind theme (`tailwind.config.js`) carries its tokens — colors (`primary`,
+`surface`, `ink`, `sidebar`, `success`/`warning`/`danger`), fonts (`font-sans` = Inter,
+`font-brand` = Involve Medium, self-hosted), font sizes with the mockup's letter-spacing,
+radii (`rounded` = 3.75px, `rounded-md` = 8px, `rounded-sm` = 3.75px), `h-control` = 37.5px. Use these
+tokens and Tailwind utilities, not hardcoded hex values or scoped CSS. FM-55 sources and
+state decisions are in `docs/design-theme.md`; the local component preview is `/dev/theme-preview.html`.
 
 ## UI language
 
-User-facing strings (labels, buttons, alerts) are in Russian; keep new user-facing text consistent with this.
+User-facing strings (labels, buttons, messages) are in Russian; keep new text consistent with this.
+
+## Импорт CSV — FM-96
+
+`ImportDialog.vue` использует отдельные подсказки CSV/XLSX: гибкий порядок и дополнительные
+колонки относятся только к CSV. `errors[].row` для CSV — физическая строка начала записи,
+отображать «Строка файла», для XLSX — «Строка Excel», null — «Файл».
+`imports/errors.ts` различает `invalid_encoding` и ошибки структуры внутри FM-422301;
+не подсказывать менять кодировку без соответствующей причины. Сообщения отдельных полей
+берутся из API и выводятся текстом. Не парсить и не преобразовывать CSV на клиенте.
+Подробнее: `docs/import-operations.md`.
+
+## Редактирование операций — FM-100
+
+`TransactionListDialog.vue` открывается из обеих карточек последних операций. Список,
+черновики и версии разделены в `src/transactions/`; сохранение всех dirty-строк атомарное,
+удаление выбранных — частичное. Не обновлять expected_version без явной сверки пользователя.
+После unknown/network/5xx автоматический повтор запрещён. В контракте нет GET по UID:
+`getTransaction` ищет запись в страницах без фильтров; отсутствие не доказывает удаления.
+Сценарии, ограничения и ссылки на Figma: `docs/transaction-editor.md`.
+Локальный preview: `/dev/transaction-editor-preview.html` (ответы в памяти, без авторизации).

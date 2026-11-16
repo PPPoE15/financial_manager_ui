@@ -6,18 +6,29 @@ import vueDevTools from 'vite-plugin-vue-devtools'
 
 // https://vite.dev/config/
 export default defineConfig({
-  plugins: [
-    vue(),
-    vueDevTools(),
-  ],
-  base: './',
+  plugins: [vue(), vueDevTools()],
+  // Абсолютный base: относительные пути к ассетам ломаются при обновлении страницы на вложенном маршруте
+  base: '/',
+  // В dev-режиме повторяет маршрутизацию nginx: запрос уходит в контейнер бэкенда (порты из
+  // fm_devops/docker-compose.yaml) с тем же путём — оба сервиса сами монтируют API под /transaction
+  // и /auth. Нужен, когда VITE_API_URL/VITE_AUTH_API_URL не заданы.
+  server: {
+    proxy: {
+      '/transaction/': {
+        target: 'http://localhost:8083',
+      },
+      '/auth/': {
+        target: 'http://localhost:8082',
+      },
+    },
+  },
   build: {
-    outDir: 'dist', // 📁 Папка сборки
-    emptyOutDir: true
+    outDir: 'dist',
+    emptyOutDir: true,
   },
   resolve: {
     alias: {
-      '@': fileURLToPath(new URL('./src', import.meta.url))
+      '@': fileURLToPath(new URL('./src', import.meta.url)),
     },
   },
 })
