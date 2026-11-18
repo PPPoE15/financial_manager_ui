@@ -30,6 +30,10 @@ jobs:
 
       - name: Test
         run: npm run test
+      - name: Build HTTP image
+        run: docker build -t fm-ui:nginx-test .
+      - name: Test nginx HTTP and proxy trust
+        run: python3 -m unittest discover -s scripts/tests -p test_nginx_http.py -v
 
   publish:
     needs: build
