@@ -26,7 +26,7 @@ make build_dev    # docker build -t pppoe15/fm-ui:dev .
 make push_dev     # docker login && docker push pppoe15/fm-ui:dev
 ```
 The Dockerfile does a multi-stage build (`npm run build` → static files served by nginx using
-`nginx/nginx.conf`). nginx listens on 443 with certs mounted at `/etc/nginx/ssl`, proxies `/auth/`
+`nginx/nginx.conf`). nginx listens on HTTP port 80 without certificates, proxies `/auth/`
 and `/transaction/` to the backend containers with the path unchanged (both services mount their API under
 their own prefix) and falls back to `index.html` for SPA routes.
 Missing files under `/assets/` return 404 (not `index.html`), so a stale lazy chunk fails cleanly.
@@ -201,3 +201,15 @@ User-facing strings (labels, buttons, messages) are in Russian; keep new text co
 `getTransaction` ищет запись в страницах без фильтров; отсутствие не доказывает удаления.
 Сценарии, ограничения и ссылки на Figma: `docs/transaction-editor.md`.
 Локальный preview: `/dev/transaction-editor-preview.html` (ответы в памяти, без авторизации).
+
+## HTTP за внешним proxy — FM-122
+
+TLS завершается на отдельной ВМ proxy. Адреса доверенных proxy задаются файлом
+`/etc/nginx/trusted-proxies.conf` (IP/CIDR и значение `1;`); по умолчанию список пуст.
+Только для этих адресов принимается `X-Forwarded-Proto: http|https`. Исходный Host
+с портом сохраняется, `Forwarded` удаляется, перенаправления nginx относительные.
+Не доверять всей Docker-сети или адресу NAT, общему с посторонними клиентами.
+Инструкции и ограничения: `docs/http-proxy.md`. Проверка образа:
+`docker build -t fm-ui:nginx-test .` и
+`python3 -m unittest discover -s scripts/tests -p test_nginx_http.py -v`.
+Эти проверки выполняются в CI перед публикацией образа.

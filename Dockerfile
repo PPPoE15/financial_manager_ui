@@ -13,10 +13,12 @@ COPY ./ /app/
 RUN npm run build
 
 
-FROM nginx:1.29.2 as stage
+FROM nginx:1.29.2 AS stage
 
 COPY --from=builder /app/dist /usr/share/nginx/html
-COPY --chmod=444 nginx/nginx.conf /etc/nginx/nginx.conf
+# Убираем стандартный HTTP virtual host, чтобы все Host обслуживало приложение.
+RUN rm /etc/nginx/conf.d/default.conf
+COPY --chmod=444 nginx/*.conf /etc/nginx/
 
 EXPOSE 80
 
