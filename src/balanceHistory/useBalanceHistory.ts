@@ -10,6 +10,8 @@ export function useBalanceHistory() {
   const from = ref(initial.from)
   const to = ref(initial.to)
   const points = ref<BalanceHistoryPoint[]>([])
+  const historyStartDate = ref<string | null>(null)
+  const startingBalanceDate = ref<string | null>(null)
   const loading = ref(false)
   const error = ref('')
   const validation = ref('')
@@ -32,12 +34,18 @@ export function useBalanceHistory() {
     error.value = ''
     needsBalance.value = false
     points.value = []
+    historyStartDate.value = null
+    startingBalanceDate.value = null
     loading.value = false
     if (validation.value) return
     loading.value = true
     try {
       const data = await getBalanceHistory(from.value, to.value)
-      if (current === generation) points.value = data.points
+      if (current === generation) {
+        points.value = data.points
+        historyStartDate.value = data.history_start_date
+        startingBalanceDate.value = data.starting_balance_date
+      }
     } catch (cause) {
       if (current !== generation) return
       if (
@@ -62,5 +70,18 @@ export function useBalanceHistory() {
       generation++
     },
   )
-  return { from, to, points, loading, error, validation, needsBalance, today, unknown, reload }
+  return {
+    from,
+    to,
+    points,
+    historyStartDate,
+    startingBalanceDate,
+    loading,
+    error,
+    validation,
+    needsBalance,
+    today,
+    unknown,
+    reload,
+  }
 }

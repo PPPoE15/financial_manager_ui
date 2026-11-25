@@ -10,6 +10,8 @@ function response(balance: number | null = -7) {
     data: {
       date_from: '2026-10-25',
       date_to: '2026-10-26',
+      history_start_date: '2026-10-26',
+      starting_balance_date: '2026-10-26',
       currency: 'RUB',
       unit: 'rubles',
       timezone: 'Europe/Moscow',
@@ -49,6 +51,8 @@ describe('Загрузка дневного остатка', () => {
       params: { date_from: '2026-10-13', date_to: '2026-10-26' },
     })
     expect(state.points.value).toEqual(response().data.points)
+    expect(state.historyStartDate.value).toBe('2026-10-26')
+    expect(state.startingBalanceDate.value).toBe('2026-10-26')
     state.from.value = '2026-10-25'
     await nextTick()
     await flushPromises()
@@ -73,9 +77,16 @@ describe('Загрузка дневного остатка', () => {
     await nextTick()
     await flushPromises()
     if (rejectOld) reject(failure(409, 'FM-409203'))
-    else resolveOld(response(500))
+    else {
+      const stale = response(500)
+      stale.data.history_start_date = '2000-01-01'
+      stale.data.starting_balance_date = '2026-01-01'
+      resolveOld(stale)
+    }
     await flushPromises()
     expect(state.points.value[1]?.balance).toBe(0)
+    expect(state.historyStartDate.value).toBe('2026-10-26')
+    expect(state.startingBalanceDate.value).toBe('2026-10-26')
     expect(state.error.value).toBe('')
     expect(state.needsBalance.value).toBe(false)
   })
@@ -128,4 +139,34 @@ describe('Загрузка дневного остатка', () => {
     expect(state.error.value).toBe('')
     expect(state.points.value[1]?.balance).toBe(0)
   })
+})
+
+/** Проверяет изменение общей границы истории после импорта или удаления операций. */
+it('обновляет границы при reload даже если выбранный период начинается до прежней границы', async () => {
+  const first = response(100)
+  first.data.history_start_date = '2026-10-26'
+  const imported = response(0)
+  imported.data.history_start_date = '2000-01-01'
+  imported.data.starting_balance_date = '2026-10-20'
+  const get = vi.spyOn(http, 'get').mockResolvedValueOnce(first).mockResolvedValue(imported)
+  const state = scope.run(useBalanceHistory)!
+  await flushPromises()
+  await state.reload()
+  expect(get).toHaveBeenCalledTimes(2)
+  expect(state.from.value).toBe('2026-10-13')
+  expect(state.historyStartDate.value).toBe('2000-01-01')
+  expect(state.startingBalanceDate.value).toBe('2026-10-20')
+})
+
+/** Запрещает показывать метаданные предыдущего ответа после ошибки. */
+it('очищает границы при ошибке нового запроса', async () => {
+  vi.spyOn(http, 'get')
+    .mockResolvedValueOnce(response())
+    .mockRejectedValue(failure(422, 'FM-422000'))
+  const state = scope.run(useBalanceHistory)!
+  await flushPromises()
+  await state.reload()
+  expect(state.historyStartDate.value).toBeNull()
+  expect(state.startingBalanceDate.value).toBeNull()
+  expect(state.error.value).not.toBe('')
 })

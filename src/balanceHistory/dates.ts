@@ -34,3 +34,8 @@ export function defaultRange(today = moscowToday()): { from: string; to: string 
   const from = new Date(Date.parse(`${today}T00:00:00Z`) - 13 * DAY_MS).toISOString().slice(0, 10)
   return { from: from < '2000-01-01' ? '2000-01-01' : from, to: today }
 }
+
+/** Форматирует календарную дату отчёта без изменения часового пояса. */
+export function formatHistoryDate(value: string): string {
+  return `${value.slice(8, 10)}.${value.slice(5, 7)}.${value.slice(0, 4)}`
+}

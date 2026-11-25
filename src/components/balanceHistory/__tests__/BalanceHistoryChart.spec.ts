@@ -90,3 +90,43 @@ describe('График остатка', () => {
     expect(wrapper.get('[data-point-index]').attributes('aria-label')).not.toContain('неизвестен')
   })
 })
+
+/** Различает расчётные и последующие значения без изменения линии и сумм API. */
+it('помечает только известные точки раньше стартовой даты как расчётные', async () => {
+  const wrapper = mount(BalanceHistoryChart, {
+    props: {
+      startingBalanceDate: '2026-10-03',
+      points: [
+        { date: '2026-10-01', balance: null },
+        { date: '2026-10-02', balance: -1000 },
+        { date: '2026-10-03', balance: 0 },
+        { date: '2026-10-04', balance: 50 },
+      ],
+    },
+  })
+  expect(wrapper.text()).toContain('Расчётная история до 03.10.2026')
+  expect(wrapper.findAll('circle')).toHaveLength(3)
+  const points = wrapper.findAll('[data-point-index]')
+  await points[0]!.trigger('focus')
+  expect(wrapper.get('[role="tooltip"]').text()).toContain('Расчётный остаток')
+  expect(points[0]!.attributes('aria-label')).toContain('Расчётный остаток')
+  expect(wrapper.get('[role="tooltip"]').text()).toContain('−1\u00a0000\u00a0₽')
+  await points[1]!.trigger('focus')
+  expect(wrapper.get('[role="tooltip"]').text()).not.toContain('Расчётный остаток')
+  expect(points[1]!.attributes('aria-label')).not.toContain('Расчётный остаток')
+  await points[2]!.trigger('focus')
+  expect(wrapper.get('[role="tooltip"]').text()).not.toContain('Расчётный остаток')
+  wrapper.unmount()
+})
+
+/** Поздний диапазон сохраняет прежнюю легенду без пометки расчётных значений. */
+it('сохраняет прежнюю легенду для периода начиная со стартовой даты', () => {
+  const wrapper = mount(BalanceHistoryChart, {
+    props: {
+      startingBalanceDate: '2026-10-01',
+      points: [{ date: '2026-10-01', balance: 0 }],
+    },
+  })
+  expect(wrapper.text()).not.toContain('Расчётная история')
+  wrapper.unmount()
+})
