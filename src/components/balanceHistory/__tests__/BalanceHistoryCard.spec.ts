@@ -11,6 +11,8 @@ function response(balance: number | null) {
     data: {
       date_from: '2026-10-01',
       date_to: '2026-10-01',
+      history_start_date: '2000-01-01',
+      starting_balance_date: '2026-10-10',
       currency: 'RUB',
       unit: 'rubles',
       timezone: 'Europe/Moscow',
@@ -64,4 +66,34 @@ describe('Карточка динамики финансов', () => {
     expect(wrapper.get('[role="tooltip"]').text()).toContain('−5\u00a0₽')
     wrapper.unmount()
   })
+})
+
+/** Использует общую нижнюю границу API вместо даты ввода остатка. */
+it('разрешает выбрать ранний период и показывает границу доступной истории', async () => {
+  const history = response(-1000)
+  history.data.history_start_date = '2026-09-01'
+  vi.spyOn(http, 'get').mockResolvedValue(history)
+  const wrapper = mount(BalanceHistoryCard)
+  await flushPromises()
+  for (const input of wrapper.findAll('input[type="date"]')) {
+    expect(input.attributes('min')).toBe('2026-09-01')
+  }
+  await wrapper.get('input[type="date"]').setValue('2026-09-01')
+  await flushPromises()
+  expect(wrapper.find('[role="alert"]').exists()).toBe(false)
+  expect(wrapper.text()).toContain('Расчётная история до 10.10.2026')
+  expect(wrapper.text()).toContain('по введённому остатку и имеющимся операциям')
+  wrapper.unmount()
+})
+
+/** Сообщает нижнюю границу даже для периода полностью раньше доступных данных. */
+it('предлагает дату самой ранней истории в неизвестном диапазоне', async () => {
+  const history = response(null)
+  history.data.history_start_date = '2026-10-02'
+  vi.spyOn(http, 'get').mockResolvedValue(history)
+  const wrapper = mount(BalanceHistoryCard)
+  await flushPromises()
+  expect(wrapper.get('[role="status"]').text()).toContain('02.10.2026')
+  expect(wrapper.get('[role="status"]').text()).not.toContain('даты стартового остатка')
+  wrapper.unmount()
 })

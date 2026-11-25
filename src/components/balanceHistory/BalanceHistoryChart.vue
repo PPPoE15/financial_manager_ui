@@ -2,8 +2,24 @@
 import { computed, ref, useId, watch } from 'vue'
 import type { BalanceHistoryPoint } from '@/types/balanceHistory'
 import { formatMoney } from '@/utils/money'
+import { formatHistoryDate } from '@/balanceHistory/dates'
 
-const props = defineProps<{ points: BalanceHistoryPoint[] }>()
+const props = defineProps<{
+  points: BalanceHistoryPoint[]
+  startingBalanceDate?: string | null
+}>()
+const hasReconstructedHistory = computed(
+  /** Показывает подпись только для известных точек раньше стартовой даты. */ () => {
+    const startingDate = props.startingBalanceDate
+    return (
+      !!startingDate &&
+      props.points.some(
+        /** Отличает расчётную точку от неизвестного дня и дня сверки. */ (point) =>
+          point.balance !== null && point.date < startingDate,
+      )
+    )
+  },
+)
 const plot = ref<HTMLElement | null>(null)
 const tooltipId = useId()
 const helpId = useId()
@@ -119,10 +135,6 @@ const dateLabels = computed(
         props.points[index] ? [props.points[index]!] : [],
     ),
 )
-/** Форматирует дату без пересчёта календарного дня в локальный часовой пояс. */
-function dateLabel(date: string): string {
-  return `${date.slice(8, 10)}.${date.slice(5, 7)}.${date.slice(0, 4)}`
-}
 /** Сокращает только подписи оси, сохраняя точное значение в подсказке точки. */
 function axisLabel(value: number): string {
   return new Intl.NumberFormat('ru-RU', { notation: 'compact', maximumFractionDigits: 1 }).format(
@@ -135,6 +147,10 @@ function axisLabel(value: number): string {
   <div class="min-w-0">
     <p class="mb-3 text-caption text-ink-muted">
       <span aria-hidden="true" class="text-success">●</span> Общий остаток
+      <template v-if="hasReconstructedHistory && startingBalanceDate">
+        · Расчётная история до {{ formatHistoryDate(startingBalanceDate) }}
+        по введённому остатку и имеющимся операциям
+      </template>
     </p>
     <div
       class="grid min-w-0 grid-cols-[64px_minmax(0,1fr)] gap-x-2 text-[10px] text-ink-muted sm:text-caption"
@@ -192,7 +208,7 @@ function axisLabel(value: number): string {
               :data-point-index="dot.index"
               :tabindex="dot.index === activeIndex ? 0 : -1"
               role="button"
-              :aria-label="`${dateLabel(dot.date)}: ${formatMoney(dot.balance)}`"
+              :aria-label="`${formatHistoryDate(dot.date)}: ${formatMoney(dot.balance)}${startingBalanceDate && dot.date < startingBalanceDate ? ' · Расчётный остаток' : ''}`"
               :aria-describedby="helpId"
               r="4"
               stroke="transparent"
@@ -218,16 +234,19 @@ function axisLabel(value: number): string {
             transform: `translate(${selectedDot.x < 160 ? '0' : selectedDot.x > 480 ? '-100%' : '-50%'}, calc(-100% - 8px))`,
           }"
         >
-          <span class="block">{{ dateLabel(selectedDot.date) }}</span>
+          <span class="block">{{ formatHistoryDate(selectedDot.date) }}</span>
           <span class="block font-semibold tabular-nums">{{
             formatMoney(selectedDot.balance)
           }}</span>
+          <span v-if="startingBalanceDate && selectedDot.date < startingBalanceDate" class="block">
+            Расчётный остаток
+          </span>
         </div>
       </div>
       <div />
       <div aria-hidden="true" class="flex justify-between gap-1 pt-1">
         <span v-for="point in dateLabels" :key="point.date">{{
-          dateLabel(point.date).slice(0, 5)
+          formatHistoryDate(point.date).slice(0, 5)
         }}</span>
       </div>
       <p aria-hidden="true" class="col-start-2 mt-1 text-right">Дни</p>

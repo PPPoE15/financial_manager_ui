@@ -4,11 +4,24 @@ import BalanceHistoryChart from './BalanceHistoryChart.vue'
 import BaseButton from '@/components/ui/BaseButton.vue'
 import ErrorMessage from '@/components/ui/ErrorMessage.vue'
 import { useBalanceHistory } from '@/balanceHistory/useBalanceHistory'
+import { formatHistoryDate } from '@/balanceHistory/dates'
 
 const emit = defineEmits<{ 'set-balance': [] }>()
 const id = useId()
-const { from, to, points, loading, error, validation, needsBalance, today, unknown, reload } =
-  useBalanceHistory()
+const {
+  from,
+  to,
+  points,
+  historyStartDate,
+  startingBalanceDate,
+  loading,
+  error,
+  validation,
+  needsBalance,
+  today,
+  unknown,
+  reload,
+} = useBalanceHistory()
 defineExpose({ reload })
 </script>
 
@@ -27,7 +40,7 @@ defineExpose({ reload })
             :id="`${id}-from`"
             v-model="from"
             type="date"
-            min="2000-01-01"
+            :min="historyStartDate ?? '2000-01-01'"
             :max="today"
             :aria-invalid="!!validation"
             :aria-describedby="validation ? `${id}-validation` : undefined"
@@ -40,7 +53,7 @@ defineExpose({ reload })
             :id="`${id}-to`"
             v-model="to"
             type="date"
-            min="2000-01-01"
+            :min="historyStartDate ?? '2000-01-01'"
             :max="today"
             :aria-invalid="!!validation"
             :aria-describedby="validation ? `${id}-validation` : undefined"
@@ -65,9 +78,16 @@ defineExpose({ reload })
         <BaseButton variant="secondary" @click="reload">Повторить</BaseButton>
       </div>
       <p v-else-if="unknown" role="status" class="py-10 text-sm text-ink-muted">
-        Остаток за выбранный период неизвестен. Выберите даты начиная с даты стартового остатка.
+        Остаток за выбранный период неизвестен.
+        <template v-if="historyStartDate">
+          История доступна с {{ formatHistoryDate(historyStartDate) }}.
+        </template>
       </p>
-      <BalanceHistoryChart v-else-if="points.length" :points="points" />
+      <BalanceHistoryChart
+        v-else-if="points.length"
+        :points="points"
+        :starting-balance-date="startingBalanceDate"
+      />
     </div>
   </section>
 </template>

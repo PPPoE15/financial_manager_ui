@@ -1,4 +1,12 @@
-vi.mock('@/components/plans/UpcomingPlansCard.vue', /** Отделяет прежние сценарии главной от нового виджета с собственными интеграционными тестами. */ () => ({default: {template: '<div />', methods: { /** Заглушает обновление отдельно проверяемого виджета. */ reload() {} }}}))
+vi.mock(
+  '@/components/plans/UpcomingPlansCard.vue',
+  /** Отделяет прежние сценарии главной от нового виджета с собственными интеграционными тестами. */ () => ({
+    default: {
+      template: '<div />',
+      methods: { /** Заглушает обновление отдельно проверяемого виджета. */ reload() {} },
+    },
+  }),
+)
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { mount, flushPromises, type VueWrapper } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
@@ -6,16 +14,20 @@ import { http } from '@/api/client'
 import { useSessionStore } from '@/stores/session'
 import HomeView from '../HomeView.vue'
 import TransactionEntryDialog from '@/components/transactions/TransactionEntryDialog.vue'
+import ImportDialog from '@/components/imports/ImportDialog.vue'
+import BalanceHistoryCard from '@/components/balanceHistory/BalanceHistoryCard.vue'
 
 let wrapper: VueWrapper | undefined
 let balance: number | null
 let missing: boolean
+let historyStart: string
 /** Готовит HTTP-границу с полными ответами контрактов. */
 beforeEach(() => {
   setActivePinia(createPinia())
   useSessionStore().setUser({ uid: 'test', name: 'Артём', email: 'test@example.com' })
   balance = 100
   missing = false
+  historyStart = '2026-10-25'
   vi.spyOn(http, 'get').mockImplementation(
     /** Отвечает на реальные запросы главной страницы. */ async (url, config) => {
       if (url === '/balance-history') {
@@ -25,10 +37,17 @@ beforeEach(() => {
           data: {
             date_from: config?.params.date_from,
             date_to: config?.params.date_to,
+            history_start_date: historyStart,
+            starting_balance_date: '2026-10-25',
             currency: 'RUB',
             unit: 'rubles',
             timezone: 'Europe/Moscow',
-            points: [{ date: config?.params.date_to, balance }],
+            points: [
+              {
+                date: config?.params.date_to,
+                balance: config?.params.date_to < historyStart ? null : balance,
+              },
+            ],
           },
         }
       }
@@ -107,4 +126,29 @@ describe('История остатка на главной', () => {
     expect(wrapper.get('[role="tooltip"]').text()).toContain('75\u00a0₽')
     expect(document.querySelector('[role="dialog"]')).toBeNull()
   })
+})
+
+/** Импорт делает ранее неизвестный период доступным и обновляет нижнюю границу карточки. */
+it('после импорта восстанавливает выбранный ранний период и обновляет min дат', async () => {
+  wrapper = mount(HomeView, {
+    props: { importRequested: true },
+    global: { stubs: { ImportDialog: true } },
+  })
+  await flushPromises()
+  const card = wrapper.getComponent(BalanceHistoryCard)
+  const dates = card.findAll('input[type="date"]')
+  await dates[0]!.setValue('2026-10-01')
+  await dates[1]!.setValue('2026-10-03')
+  await flushPromises()
+  expect(wrapper.text()).toContain('Остаток за выбранный период неизвестен')
+  historyStart = '2026-10-01'
+  balance = -50
+  wrapper.getComponent(ImportDialog).vm.$emit('saved')
+  await flushPromises()
+  expect(dates[0]!.attributes('min')).toBe('2026-10-01')
+  expect(dates[1]!.attributes('min')).toBe('2026-10-01')
+  expect(wrapper.text()).toContain('Расчётная история до 25.10.2026')
+  await wrapper.get('[data-point-index]').trigger('focus')
+  expect(wrapper.get('[role="tooltip"]').text()).toContain('−50\u00a0₽')
+  expect(wrapper.get('[role="tooltip"]').text()).toContain('Расчётный остаток')
 })
